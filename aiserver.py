@@ -65,7 +65,7 @@ class colors:
     UNDERLINE = '\033[4m'
 
 # AI models
-modellist = [
+mainmenu = [
     ["Load a model from its directory", "NeoCustom", ""],
     ["Load an old GPT-2 model (eg CloverEdition)", "GPT2Custom", ""],
     ["Skein 6B (Hybrid)", "KoboldAI/GPT-J-6B-Skein", "16GB"],
@@ -74,25 +74,61 @@ modellist = [
     ["Lit 6B (NSFW)", "hakurei/lit-6B", "16GB"],
     ["Shinen 6B (NSFW)", "KoboldAI/GPT-J-6B-Shinen", "16GB"],
     ["C1 6B (Chatbot)", "hakurei/c1-6B", "16GB"],
-    ["Janeway 2.7B (Novel)", "KoboldAI/GPT-Neo-2.7B-Janeway", "8GB"],
+    ["Janeway Neo 2.7B (Novel)", "KoboldAI/GPT-Neo-2.7B-Janeway", "8GB"],
+    ["Janeway FSD 2.7B (Novel)", "KoboldAI/fairseq-dense-2.7B-Janeway", "8GB"],
     ["Adventure 2.7B", "KoboldAI/GPT-Neo-2.7B-AID", "8GB"],
     ["Picard 2.7B (Novel)", "KoboldAI/GPT-Neo-2.7B-Picard", "8GB"],
     ["Horni 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Horni", "8GB"],
     ["Horni-LN 2.7B (Novel)", "KoboldAI/GPT-Neo-2.7B-Horni-LN", "8GB"],
     ["Shinen 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Shinen", "8GB"],
+    ["Untuned GPT-Neo/J", "gptneolist", ""],
+    ["Untuned Fairseq Dense", "fsdlist", ""],
+    ["Untuned XGLM", "xglmlist", ""],
+    ["Untuned GPT2", "gpt2list", ""],
+    ["Online Services", "apilist", ""],
+    ["Read Only (No AI)", "ReadOnly", ""]
+    ]
+
+gptneolist = [
     ["GPT-J 6B", "EleutherAI/gpt-j-6B", "16GB"],
     ["GPT-Neo 2.7B", "EleutherAI/gpt-neo-2.7B", "8GB"],
     ["GPT-Neo 1.3B", "EleutherAI/gpt-neo-1.3B", "6GB"],
+    ["Return to Main Menu", "Return", ""],
+]
+
+gpt2list = [
     ["GPT-2 XL", "gpt2-xl", "6GB"],
     ["GPT-2 Large", "gpt2-large", "4GB"],
     ["GPT-2 Med", "gpt2-medium", "2GB"],
     ["GPT-2", "gpt2", "2GB"],
+    ["Return to Main Menu", "Return", ""],
+    ]
+
+fsdlist = [
+    ["Fairseq Dense 13B", "KoboldAI/fairseq-dense-13B", "32GB"],
+    ["Fairseq Dense 6.7B", "KoboldAI/fairseq-dense-6.7B", "16GB"],
+    ["Fairseq Dense 2.7B", "KoboldAI/fairseq-dense-2.7B", "8GB"],
+    ["Fairseq Dense 1.3B", "KoboldAI/fairseq-dense-1.3B", "6GB"],
+    ["Fairseq Dense 355M", "KoboldAI/fairseq-dense-355M", ""],
+    ["Fairseq Dense 125M", "KoboldAI/fairseq-dense-125M", ""],
+    ["Return to Main Menu", "Return", ""],
+    ]
+
+xglmlist = [
+    ["XGLM 4.5B (Larger Dataset)", "facebook/xglm-4.5B", ""],
+    ["XGLM 7.5B", "facebook/xglm-7.5B", ""],
+    ["XGLM 2.9B", "facebook/xglm-2.9B", ""],
+    ["XGLM 1.7B", "facebook/xglm-1.7B", ""],
+    ["XGLM 564M", "facebook/xglm-564M", ""],
+    ["Return to Main Menu", "Return", ""],
+    ]
+
+apilist = [
     ["OpenAI API (requires API key)", "OAI", ""],
     ["InferKit API (requires API key)", "InferKit", ""],
     ["KoboldAI Server API (Old Google Colab)", "Colab", ""],
-    ["Read Only (No AI)", "ReadOnly", ""]
-    ]
-
+    ["Return to Main Menu", "Return", ""],
+]
 # Variables
 class vars:
     lastact     = ""     # The last action received from the user
@@ -108,7 +144,7 @@ class vars:
     ikgen       = 200    # Number of characters for InferKit to generate
     rep_pen     = 1.1    # Default generator repetition_penalty
     rep_pen_slope = 1.0  # Default generator repetition penalty slope
-    rep_pen_range = 512    # Default generator repetition penalty range
+    rep_pen_range = 1024 # Default generator repetition penalty range
     temp        = 0.5    # Default generator temperature
     top_p       = 0.9    # Default generator top_p
     top_k       = 0      # Default generator top_k
@@ -124,12 +160,19 @@ class vars:
     setauthornotetemplate = authornotetemplate  # Saved author's note template in settings
     andepth     = 3      # How far back in history to append author's note
     actions     = structures.KoboldStoryRegister()  # Actions submitted by user and AI
+    actions_metadata = {} # List of dictonaries, one dictonary for every action that contains information about the action like alternative options.
+                          # Contains at least the same number of items as actions. Back action will remove an item from actions, but not actions_metadata
+                          # Dictonary keys are:
+                          # Selected Text: (text the user had selected. None when this is a newly generated action)
+                          # Alternative Generated Text: {Text, Pinned, Previous Selection, Edited}
+                          # 
     worldinfo   = []     # List of World Info key/value objects
     worldinfo_i = []     # List of World Info key/value objects sans uninitialized entries
     worldinfo_u = {}     # Dictionary of World Info UID - key/value pairs
     wifolders_d = {}     # Dictionary of World Info folder UID-info pairs
     wifolders_l = []     # List of World Info folder UIDs
     wifolders_u = {}     # Dictionary of pairs of folder UID - list of WI UID
+    modelconfig = {}     # Raw contents of the model's config.json, or empty dictionary if none found
     lua_state   = None   # Lua state of the Lua scripting system
     lua_koboldbridge = None  # `koboldbridge` from bridge.lua
     lua_kobold  = None   # `kobold` from` bridge.lua
@@ -182,7 +225,7 @@ class vars:
     recentrngm  = None   # If a new random game was recently generated without Submitting after, this is the memory used (as a string), otherwise this is None
     useprompt   = False   # Whether to send the full prompt with every submit action
     breakmodel  = False  # For GPU users, whether to use both system RAM and VRAM to conserve VRAM while offering speedup compared to CPU-only
-    bmsupported = False  # Whether the breakmodel option is supported (GPT-Neo/GPT-J only, currently)
+    bmsupported = False  # Whether the breakmodel option is supported (GPT-Neo/GPT-J/XGLM only, currently)
     nobreakmodel = False  # Something specifically requested Breakmodel to be disabled (For example a models config)
     smandelete  = False  # Whether stories can be deleted from inside the browser
     smanrename  = False  # Whether stories can be renamed from inside the browser
@@ -199,21 +242,25 @@ class vars:
     adventure   = False
     actionmode  = 1
     dynamicscan = False
-    remote      = False
+    host        = False
     nopromptgen = False
     rngpersist  = False
     nogenmod    = False
     welcome     = False  # Custom Welcome Text (False is default)
     newlinemode = "n"
+    quiet       = False # If set will suppress any story text from being printed to the console (will only be seen on the client web page)
+    debug       = False # If set to true, will send debug information to the client for display
+
+utils.vars = vars
 
 #==================================================================#
 # Function to get model selection at startup
 #==================================================================#
-def getModelSelection():
-    print("    #   Model                           VRAM\n    =========================================")
+def getModelSelection(modellist):
+    print("    #    Model\t\t\t\t\t\tVRAM\n    ========================================================")
     i = 1
     for m in modellist:
-        print("    {0} - {1}\t\t{2}".format("{:<2}".format(i), m[0].ljust(15), m[2]))
+        print("    {0} - {1}\t\t\t{2}".format("{:<2}".format(i), m[0].ljust(25), m[2]))
         i += 1
     print(" ");
     modelsel = 0
@@ -225,20 +272,26 @@ def getModelSelection():
         else:
             print("{0}Please enter a valid selection.{1}".format(colors.RED, colors.END))
     
-    # If custom model was selected, get the filesystem location and store it
-    if(vars.model == "NeoCustom" or vars.model == "GPT2Custom"):
-        print("{0}Please choose the folder where pytorch_model.bin is located:{1}\n".format(colors.CYAN, colors.END))
+    # Model Lists
+    try:
+        getModelSelection(eval(vars.model))
+    except Exception as e:
+        if(vars.model == "Return"):
+            getModelSelection(mainmenu)
+
+        # If custom model was selected, get the filesystem location and store it
+        if(vars.model == "NeoCustom" or vars.model == "GPT2Custom"):
+            print("{0}Please choose the folder where pytorch_model.bin is located:{1}\n".format(colors.CYAN, colors.END))
+            modpath = fileops.getdirpath(getcwd() + "/models", "Select Model Folder")
         
-        modpath = fileops.getdirpath(getcwd(), "Select Model Folder")
-        
-        if(modpath):
-            # Save directory to vars
-            vars.custmodpth = modpath
-        else:
-            # Print error and retry model selection
-            print("{0}Model select cancelled!{1}".format(colors.RED, colors.END))
-            print("{0}Select an AI model to continue:{1}\n".format(colors.CYAN, colors.END))
-            getModelSelection()
+            if(modpath):
+                # Save directory to vars
+                vars.custmodpth = modpath
+            else:
+                # Print error and retry model selection
+                print("{0}Model select cancelled!{1}".format(colors.RED, colors.END))
+                print("{0}Select an AI model to continue:{1}\n".format(colors.CYAN, colors.END))
+                getModelSelection(mainmenu)
 
 #==================================================================#
 # Return all keys in tokenizer dictionary containing char
@@ -377,32 +430,47 @@ def device_config(model):
         return
     model.half().to('cpu')
     gc.collect()
-    model.transformer.wte.to(breakmodel.primary_device)
-    model.transformer.ln_f.to(breakmodel.primary_device)
-    if(hasattr(model, 'lm_head')):
+    if(hasattr(model, "transformer")):
+        model.transformer.wte.to(breakmodel.primary_device)
+        model.transformer.ln_f.to(breakmodel.primary_device)
+        if(hasattr(model, 'lm_head')):
+            model.lm_head.to(breakmodel.primary_device)
+        if(hasattr(model.transformer, 'wpe')):
+            model.transformer.wpe.to(breakmodel.primary_device)
+    else:
+        model.model.embed_tokens.to(breakmodel.primary_device)
+        model.model.layer_norm.to(breakmodel.primary_device)
         model.lm_head.to(breakmodel.primary_device)
-    if(hasattr(model.transformer, 'wpe')):
-        model.transformer.wpe.to(breakmodel.primary_device)
+        model.model.embed_positions.to(breakmodel.primary_device)
     gc.collect()
-    GPTNeoModel.forward = breakmodel.new_forward
+    GPTNeoModel.forward = breakmodel.new_forward_neo
     if("GPTJModel" in globals()):
-        GPTJModel.forward = breakmodel.new_forward
+        GPTJModel.forward = breakmodel.new_forward_neo
+    if("XGLMModel" in globals()):
+        XGLMModel.forward = breakmodel.new_forward_xglm
     generator = model.generate
-    breakmodel.move_hidden_layers(model.transformer)
+    if(hasattr(model, "transformer")):
+        breakmodel.move_hidden_layers(model.transformer)
+    else:
+        breakmodel.move_hidden_layers(model.model, model.model.layers)
 
 #==================================================================#
 #  Allow the models to override some settings
 #==================================================================#
 def loadmodelsettings():
     try:
-        model_js_config = str(model_config).partition(' ')[2]
-        js   = json.loads(model_js_config)
+        js   = json.loads(str(model_config).partition(' ')[2])
     except Exception as e:
         try:
-            model_js_config = open(vars.custmodpth + "/config.json", "r")
+            try:
+                js   = json.load(open(vars.custmodpth + "/config.json", "r"))
+            except Exception as e:
+                js   = json.load(open(vars.custmodpth.replace('/', '_') + "/config.json", "r"))            
         except Exception as e:
-            model_js_config = open(vars.custmodpth.replace('/', '_') + "/config.json", "r")
-        js   = json.load(model_js_config)
+            js   = {}
+    if vars.model_type == "xglm" or js.get("compat", "j") == "fairseq_lm":
+        vars.newlinemode = "s"  # Default to </s> newline mode if using XGLM
+    vars.modelconfig = js
     if("badwordsids" in js):
         vars.badwordsids = js["badwordsids"]
     if("nobreakmodel" in js):
@@ -439,6 +507,200 @@ def loadmodelsettings():
             vars.authornotetemplate = vars.setauthornotetemplate
 
 #==================================================================#
+#  Take settings from vars and write them to client settings file
+#==================================================================#
+def savesettings():
+     # Build json to write
+    js = {}
+    js["apikey"]      = vars.apikey
+    js["andepth"]     = vars.andepth
+    js["temp"]        = vars.temp
+    js["top_p"]       = vars.top_p
+    js["top_k"]       = vars.top_k
+    js["tfs"]         = vars.tfs
+    js["rep_pen"]     = vars.rep_pen
+    js["rep_pen_slope"] = vars.rep_pen_slope
+    js["rep_pen_range"] = vars.rep_pen_range
+    js["genamt"]      = vars.genamt
+    js["max_length"]  = vars.max_length
+    js["ikgen"]       = vars.ikgen
+    js["formatoptns"] = vars.formatoptns
+    js["numseqs"]     = vars.numseqs
+    js["widepth"]     = vars.widepth
+    js["useprompt"]   = vars.useprompt
+    js["adventure"]   = vars.adventure
+    js["chatmode"]    = vars.chatmode
+    js["chatname"]    = vars.chatname
+    js["dynamicscan"] = vars.dynamicscan
+    js["nopromptgen"] = vars.nopromptgen
+    js["rngpersist"]  = vars.rngpersist
+    js["nogenmod"]    = vars.nogenmod
+    js["autosave"]    = vars.autosave
+    js["welcome"]     = vars.welcome
+    js["newlinemode"] = vars.newlinemode
+
+    js["antemplate"]  = vars.setauthornotetemplate
+
+    js["userscripts"] = vars.userscripts
+    js["corescript"]  = vars.corescript
+    js["softprompt"]  = vars.spfilename
+
+    # Write it
+    if not os.path.exists('settings'):
+        os.mkdir('settings')
+    file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "w")
+    try:
+        file.write(json.dumps(js, indent=3))
+    finally:
+        file.close()
+
+#==================================================================#
+#  Don't save settings unless 2 seconds have passed without modification
+#==================================================================#
+@debounce(2)
+def settingschanged():
+    print("{0}Saving settings!{1}".format(colors.GREEN, colors.END))
+    savesettings()
+
+#==================================================================#
+#  Read settings from client file JSON and send to vars
+#==================================================================#
+def loadsettings():
+    if(path.exists("settings/" + getmodelname().replace('/', '_') + ".settings")):
+        # Read file contents into JSON object
+        file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "r")
+        js   = json.load(file)
+        
+        # Copy file contents to vars
+        if("apikey" in js):
+            vars.apikey     = js["apikey"]
+        if("andepth" in js):
+            vars.andepth    = js["andepth"]
+        if("temp" in js):
+            vars.temp       = js["temp"]
+        if("top_p" in js):
+            vars.top_p      = js["top_p"]
+        if("top_k" in js):
+            vars.top_k      = js["top_k"]
+        if("tfs" in js):
+            vars.tfs        = js["tfs"]
+        if("rep_pen" in js):
+            vars.rep_pen    = js["rep_pen"]
+        if("rep_pen_slope" in js):
+            vars.rep_pen_slope = js["rep_pen_slope"]
+        if("rep_pen_range" in js):
+            vars.rep_pen_range = js["rep_pen_range"]
+        if("genamt" in js):
+            vars.genamt     = js["genamt"]
+        if("max_length" in js):
+            vars.max_length = js["max_length"]
+        if("ikgen" in js):
+            vars.ikgen      = js["ikgen"]
+        if("formatoptns" in js):
+            vars.formatoptns = js["formatoptns"]
+        if("numseqs" in js):
+            vars.numseqs = js["numseqs"]
+        if("widepth" in js):
+            vars.widepth = js["widepth"]
+        if("useprompt" in js):
+            vars.useprompt = js["useprompt"]
+        if("adventure" in js):
+            vars.adventure = js["adventure"]
+        if("chatmode" in js):
+            vars.chatmode = js["chatmode"]
+        if("chatname" in js):
+            vars.chatname = js["chatname"]
+        if("dynamicscan" in js):
+            vars.dynamicscan = js["dynamicscan"]
+        if("nopromptgen" in js):
+            vars.nopromptgen = js["nopromptgen"]
+        if("rngpersist" in js):
+            vars.rngpersist = js["rngpersist"]
+        if("nogenmod" in js):
+            vars.nogenmod = js["nogenmod"]
+        if("autosave" in js):
+            vars.autosave = js["autosave"]
+        if("newlinemode" in js):
+            vars.newlinemode = js["newlinemode"]
+        if("welcome" in js):
+            vars.welcome = js["welcome"]
+
+        if("antemplate" in js):
+            vars.setauthornotetemplate = js["antemplate"]
+            if(not vars.gamestarted):
+                vars.authornotetemplate = vars.setauthornotetemplate
+        
+        if("userscripts" in js):
+            vars.userscripts = []
+            for userscript in js["userscripts"]:
+                if type(userscript) is not str:
+                    continue
+                userscript = userscript.strip()
+                if len(userscript) != 0 and all(q not in userscript for q in ("..", ":")) and all(userscript[0] not in q for q in ("/", "\\")) and os.path.exists(fileops.uspath(userscript)):
+                    vars.userscripts.append(userscript)
+
+        if("corescript" in js and type(js["corescript"]) is str and all(q not in js["corescript"] for q in ("..", ":")) and all(js["corescript"][0] not in q for q in ("/", "\\"))):
+            vars.corescript = js["corescript"]
+        else:
+            vars.corescript = "default.lua"
+
+        file.close()
+
+#==================================================================#
+#  Load a soft prompt from a file
+#==================================================================#
+def spRequest(filename):
+    vars.spfilename = ""
+    settingschanged()
+
+    if(len(filename) == 0):
+        vars.sp = None
+        vars.sp_length = 0
+        return
+
+    global np
+    if 'np' not in globals():
+        import numpy as np
+
+    z, version, shape, fortran_order, dtype = fileops.checksp(filename, vars.modeldim)
+    assert isinstance(z, zipfile.ZipFile)
+    with z.open('meta.json') as f:
+        vars.spmeta = json.load(f)
+    z.close()
+
+    with np.load(fileops.sppath(filename), allow_pickle=False) as f:
+        tensor = f['tensor.npy']
+
+    # If the tensor is in bfloat16 format, convert it to float32
+    if(tensor.dtype == 'V2'):
+        tensor.dtype = np.uint16
+        tensor = np.uint32(tensor) << 16
+        tensor.dtype = np.float32
+
+    if(tensor.dtype != np.float16):
+        tensor = np.float32(tensor)
+    assert not np.isinf(tensor).any() and not np.isnan(tensor).any()
+
+    vars.sp_length = tensor.shape[-2]
+    vars.spmeta["n_tokens"] = vars.sp_length
+
+    if(vars.model in ("TPUMeshTransformerGPTJ",)):
+        rows = tensor.shape[0]
+        padding_amount = tpu_mtj_backend.params["seq"] - (tpu_mtj_backend.params["seq"] % -tpu_mtj_backend.params["cores_per_replica"]) - rows
+        tensor = np.pad(tensor, ((0, padding_amount), (0, 0)))
+        tensor = tensor.reshape(
+            tpu_mtj_backend.params["cores_per_replica"],
+            -1,
+            tpu_mtj_backend.params["d_model"],
+        )
+        vars.sp = tpu_mtj_backend.shard_xmap(np.float32(tensor))
+    else:
+        vars.sp = torch.from_numpy(tensor)
+
+    vars.spfilename = filename
+    settingschanged()
+
+#==================================================================#
 # Startup
 #==================================================================#
 
@@ -446,6 +708,7 @@ def loadmodelsettings():
 parser = argparse.ArgumentParser(description="KoboldAI Server")
 parser.add_argument("--remote", action='store_true', help="Optimizes KoboldAI for Remote Play")
 parser.add_argument("--ngrok", action='store_true', help="Optimizes KoboldAI for Remote Play using Ngrok")
+parser.add_argument("--host", action='store_true', help="Optimizes KoboldAI for Remote Play without using a proxy service")
 parser.add_argument("--model", help="Specify the Model Type to skip the Menu")
 parser.add_argument("--path", help="Specify the Path for local models (For model NeoCustom or GPT2Custom)")
 parser.add_argument("--cpu", action='store_true', help="By default unattended launches are on the GPU use this option to force CPU usage.")
@@ -457,6 +720,9 @@ parser.add_argument("--override_rename", action='store_true', help="Renaming sto
 parser.add_argument("--configname", help="Force a fixed configuration name to aid with config management.")
 parser.add_argument("--colab", action='store_true', help="Optimize for Google Colab.")
 parser.add_argument("--nobreakmodel", action='store_true', help="Disables Breakmodel support completely.")
+parser.add_argument("--unblock", action='store_true', default=False, help="Unblocks the KoboldAI port to be accessible from other machines without optimizing for remote play (It is recommended to use --host instead)")
+parser.add_argument("--quiet", action='store_true', default=False, help="If present will suppress any story related text from showing on the console")
+parser.add_argument("--lowmem", action='store_true', help="Extra Low Memory loading for the GPU, slower but memory does not peak to twice the usage")
 
 args: argparse.Namespace = None
 if(os.environ.get("KOBOLDAI_ARGS") is not None):
@@ -472,18 +738,26 @@ if args.colab:
     args.override_rename = True;
     args.override_delete = True;
     args.nobreakmodel = True;
+    args.quiet = True;
+    args.lowmem = True;
+
+if args.quiet:
+    vars.quiet = True
 
 if args.nobreakmodel:
     vars.nobreakmodel = True;
 
 if args.remote:
-    vars.remote = True;
+    vars.host = True;
 
 if args.ngrok:
-    vars.remote = True;
+    vars.host = True;
 
-vars.smandelete = vars.remote == args.override_delete
-vars.smanrename = vars.remote == args.override_rename
+if args.host:
+    vars.host = True;
+
+vars.smandelete = vars.host == args.override_delete
+vars.smanrename = vars.host == args.override_rename
 
 # Select a model to run
 if args.model:
@@ -495,7 +769,7 @@ if args.model:
 
 else:
     print("{0}Welcome to the KoboldAI Server!\nListed RAM is the optimal VRAM and CPU ram can be up to twice the amount.\nMost models can run at less VRAM with reduced max tokens or less layers on the GPU.\nSelect an AI model to continue:{1}\n".format(colors.CYAN, colors.END))
-    getModelSelection()
+    getModelSelection(mainmenu)
 
 # If transformers model was selected & GPU available, ask to use CPU or GPU
 if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransformerGPTJ"]):
@@ -518,6 +792,12 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
             vars.model_type = model_config.model_type
         except ValueError as e:
             vars.model_type = "not_found"
+    elif(os.path.isdir("models/{}".format(vars.custmodpth.replace('/', '_')))):
+        try:
+            model_config = AutoConfig.from_pretrained("models/{}".format(vars.custmodpth.replace('/', '_')), cache_dir="cache/")
+            vars.model_type = model_config.model_type
+        except ValueError as e:
+            vars.model_type = "not_found"
     else:
         try:
             model_config = AutoConfig.from_pretrained(vars.custmodpth, cache_dir="cache/")
@@ -532,9 +812,10 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
         print("WARNING: No model type detected, assuming Neo (If this is a GPT2 model use the other menu option or --model GPT2Custom)")
         vars.model_type = "gpt_neo"
     loadmodelsettings()
+    loadsettings()
     print("{0}Looking for GPU support...{1}".format(colors.PURPLE, colors.END), end="")
     vars.hascuda = torch.cuda.is_available()
-    vars.bmsupported = vars.model_type in ("gpt_neo", "gptj") and not vars.nobreakmodel
+    vars.bmsupported = vars.model_type in ("gpt_neo", "gptj", "xglm") and not vars.nobreakmodel
     if(args.breakmodel is not None and args.breakmodel):
         print("WARNING: --breakmodel is no longer supported. Breakmodel mode is now automatically enabled when --breakmodel_gpulayers is used (see --help for details).", file=sys.stderr)
     if(args.breakmodel_layers is not None):
@@ -726,12 +1007,35 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
     if(not vars.noai):
         print("{0}Initializing transformers, please wait...{1}".format(colors.PURPLE, colors.END))
         from transformers import StoppingCriteria, GPT2TokenizerFast, GPT2LMHeadModel, GPTNeoForCausalLM, GPTNeoModel, AutoModelForCausalLM, AutoTokenizer
-        try:
-            from transformers import GPTJModel
-        except:
-            pass
+        for m in ("GPTJModel", "XGLMModel"):
+            try:
+                globals()[m] = getattr(__import__("transformers"), m)
+            except:
+                pass
         import transformers.generation_utils
         from transformers import __version__ as transformers_version
+
+        # Temporary fix for XGLM positional embedding issues until
+        # https://github.com/huggingface/transformers/issues/15736
+        # is resolved
+        try:
+            from transformers.models.xglm.modeling_xglm import XGLMSinusoidalPositionalEmbedding
+        except ImportError:
+            pass
+        else:
+            @torch.no_grad()
+            def new_forward(self, input_ids: torch.Tensor = None, inputs_embeds: torch.Tensor = None, past_key_values_length: int = 0):
+                bsz, seq_len = inputs_embeds.size()[:-1]
+                input_shape = inputs_embeds.size()[:-1]
+                sequence_length = input_shape[1]
+                position_ids = torch.arange(
+                    past_key_values_length + self.padding_idx + 1, past_key_values_length + sequence_length + self.padding_idx + 1, dtype=torch.long, device=inputs_embeds.device
+                ).unsqueeze(0).expand(input_shape).contiguous()
+                max_pos = self.padding_idx + 1 + seq_len + past_key_values_length
+                if max_pos > self.weights.size(0):
+                    self.make_weights(max_pos + self.offset, self.embedding_dim, self.padding_idx)
+                return self.weights.index_select(0, position_ids.view(-1)).view(bsz, seq_len, -1).detach()
+            XGLMSinusoidalPositionalEmbedding.forward = new_forward
 
         # Patch transformers to use our soft prompt
         def patch_causallm(cls):
@@ -743,7 +1047,10 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
                 if(vars.sp is not None):
                     shifted_input_ids = input_ids - self.config.vocab_size
                 input_ids.clamp_(max=self.config.vocab_size-1)
-                inputs_embeds = self.transformer.wte(input_ids)
+                if(hasattr(self, "transformer")):
+                    inputs_embeds = self.transformer.wte(input_ids)
+                else:
+                    inputs_embeds = self.model.embed_tokens(input_ids)
                 if(vars.sp is not None):
                     vars.sp = vars.sp.to(inputs_embeds.dtype).to(inputs_embeds.device)
                     inputs_embeds = torch.where(
@@ -751,16 +1058,18 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
                         vars.sp[shifted_input_ids.clamp(min=0)],
                         inputs_embeds,
                     )
+                if(not hasattr(self, "transformer")):
+                    inputs_embeds *= self.model.embed_scale
                 kwargs['inputs_embeds'] = inputs_embeds
                 return old_forward(self, *args, **kwargs)
             cls.forward = new_causallm_forward
         for cls in (GPT2LMHeadModel, GPTNeoForCausalLM):
             patch_causallm(cls)
-        try:
-            from transformers import GPTJForCausalLM
-            patch_causallm(GPTJForCausalLM)
-        except:
-            pass
+        for c in ("GPTJForCausalLM", "XGLMForCausalLM"):
+            try:
+                patch_causallm(getattr(__import__("transformers"), c))
+            except:
+                pass
 
 
         # Patch transformers to use our custom logit warpers
@@ -840,6 +1149,9 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
             kwargs["logits_warper"] = new_get_logits_warper(
                 beams=1,
             )
+            if(vars.newlinemode == "s"):
+                kwargs["eos_token_id"] = -1
+                kwargs.setdefault("pad_token_id", 2)
             return new_sample.old_sample(self, *args, **kwargs)
         new_sample.old_sample = transformers.generation_utils.GenerationMixin.sample
         transformers.generation_utils.GenerationMixin.sample = new_sample
@@ -891,7 +1203,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
                     return self.regeneration_required or self.halt
                 tail = input_ids[..., -vars.generated_tkns:]
                 for i, t in enumerate(tail):
-                    decoded = tokenizer.decode(t)
+                    decoded = utils.decodenewlines(tokenizer.decode(t))
                     _, found = checkworldinfo(decoded, force_use_txt=True, actions=vars._actions)
                     found -= self.excluded_world_info[i]
                     if(len(found) != 0):
@@ -927,7 +1239,7 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
         
         @contextlib.contextmanager
         def maybe_use_float16(always_use=False):
-            if(always_use or (vars.hascuda and (vars.usegpu or vars.breakmodel))):
+            if(always_use or (vars.hascuda and args.lowmem and (vars.usegpu or vars.breakmodel))):
                 original_dtype = torch.get_default_dtype()
                 torch.set_default_dtype(torch.float16)
                 yield True
@@ -960,43 +1272,48 @@ if(not vars.model in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransforme
                 lowmem = {}
 
             # Download model from Huggingface if it does not exist, otherwise load locally
+            
+            #If we specify a model and it's in the root directory, we need to move it to the models directory (legacy folder structure to new)
+            if os.path.isdir(vars.model.replace('/', '_')):
+                import shutil
+                shutil.move(vars.model.replace('/', '_'), "models/{}".format(vars.model.replace('/', '_')))
             if(os.path.isdir(vars.custmodpth)):
                with(maybe_use_float16()):
                    try:
-                       tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, cache_dir="cache/")
+                       tokenizer = AutoTokenizer.from_pretrained(vars.custmodpth, cache_dir="cache")
                    except ValueError as e:
-                       tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, cache_dir="cache/")
+                       tokenizer = GPT2TokenizerFast.from_pretrained(vars.custmodpth, cache_dir="cache")
                    try:
-                       model     = AutoModelForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache/", **lowmem)
+                       model     = AutoModelForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache", **lowmem)
                    except ValueError as e:
-                       model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache/", **lowmem)
-            elif(os.path.isdir(vars.model.replace('/', '_'))):
-               with(maybe_use_float16()):
+                       model     = GPTNeoForCausalLM.from_pretrained(vars.custmodpth, cache_dir="cache", **lowmem)
+            elif(os.path.isdir("models/{}".format(vars.model.replace('/', '_')))):
+                with(maybe_use_float16()):
                    try:
-                       tokenizer = AutoTokenizer.from_pretrained(vars.model.replace('/', '_'), cache_dir="cache/")
+                       tokenizer = AutoTokenizer.from_pretrained("models/{}".format(vars.model.replace('/', '_')), cache_dir="cache")
                    except ValueError as e:
-                       tokenizer = GPT2TokenizerFast.from_pretrained(vars.model.replace('/', '_'), cache_dir="cache/")
+                       tokenizer = GPT2TokenizerFast.from_pretrained("models/{}".format(vars.model.replace('/', '_')), cache_dir="cache")
                    try:
-                       model     = AutoModelForCausalLM.from_pretrained(vars.model.replace('/', '_'), cache_dir="cache/", **lowmem)
+                       model     = AutoModelForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), cache_dir="cache", **lowmem)
                    except ValueError as e:
-                       model     = GPTNeoForCausalLM.from_pretrained(vars.model.replace('/', '_'), cache_dir="cache/", **lowmem)
+                       model     = GPTNeoForCausalLM.from_pretrained("models/{}".format(vars.model.replace('/', '_')), cache_dir="cache", **lowmem)
             else:
                 try:
-                    tokenizer = AutoTokenizer.from_pretrained(vars.model, cache_dir="cache/")
+                    tokenizer = AutoTokenizer.from_pretrained(vars.model, cache_dir="cache")
                 except ValueError as e:
-                    tokenizer = GPT2TokenizerFast.from_pretrained(vars.model, cache_dir="cache/")
+                    tokenizer = GPT2TokenizerFast.from_pretrained(vars.model, cache_dir="cache")
                 with(maybe_use_float16()):
                     try:
-                        model     = AutoModelForCausalLM.from_pretrained(vars.model, cache_dir="cache/", **lowmem)
+                        model     = AutoModelForCausalLM.from_pretrained(vars.model, cache_dir="cache", **lowmem)
                     except ValueError as e:
-                        model     = GPTNeoForCausalLM.from_pretrained(vars.model, cache_dir="cache/", **lowmem)
+                        model     = GPTNeoForCausalLM.from_pretrained(vars.model, cache_dir="cache", **lowmem)
                 
                 if not args.colab:
-                    model = model.half()
                     import shutil
+                    model = model.half()
+                    model.save_pretrained("models/{}".format(vars.model.replace('/', '_')))
+                    tokenizer.save_pretrained("models/{}".format(vars.model.replace('/', '_')))
                     shutil.rmtree("cache/")
-                    model.save_pretrained(vars.model.replace('/', '_'))
-                    tokenizer.save_pretrained(vars.model.replace('/', '_'))
             
             if(vars.hascuda):
                 if(vars.usegpu):
@@ -1086,7 +1403,7 @@ else:
             return excluded_world_info, regeneration_required, halt
 
         for i, t in enumerate(generated):
-            decoded = tokenizer.decode(past[i]) + tokenizer.decode(t[tpu_mtj_backend.params["seq"] : tpu_mtj_backend.params["seq"] + n_generated])
+            decoded = utils.decodenewlines(tokenizer.decode(past[i])) + utils.decodenewlines(tokenizer.decode(t[tpu_mtj_backend.params["seq"] : tpu_mtj_backend.params["seq"] + n_generated]))
             _, found = checkworldinfo(decoded, force_use_txt=True, actions=vars._actions)
             found -= excluded_world_info[i]
             if(len(found) != 0):
@@ -1116,13 +1433,16 @@ else:
     if(vars.model == "Colab"):
         from transformers import GPT2TokenizerFast
         tokenizer = GPT2TokenizerFast.from_pretrained("EleutherAI/gpt-neo-2.7B", cache_dir="cache/")
+        loadsettings()
     elif(vars.model == "OAI"):
         from transformers import GPT2TokenizerFast
         tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", cache_dir="cache/")
+        loadsettings()
     # Load the TPU backend if requested
     elif(vars.model == "TPUMeshTransformerGPTJ"):
         print("{0}Initializing Mesh Transformer JAX, please wait...{1}".format(colors.PURPLE, colors.END))
-        assert vars.model == "TPUMeshTransformerGPTJ" and vars.custmodpth and os.path.isdir(vars.custmodpth)
+        if not vars.custmodpth or not os.path.isdir(vars.custmodpth):
+            raise FileNotFoundError(f"The specified model path {repr(vars.custmodpth)} is not the path to a valid folder")
         import tpu_mtj_backend
         tpu_mtj_backend.vars = vars
         tpu_mtj_backend.warper_callback = tpumtjgenerate_warper_callback
@@ -1130,10 +1450,14 @@ else:
         tpu_mtj_backend.compiling_callback = tpumtjgenerate_compiling_callback
         tpu_mtj_backend.stopped_compiling_callback = tpumtjgenerate_stopped_compiling_callback
         tpu_mtj_backend.settings_callback = tpumtjgenerate_settings_callback
-        tpu_mtj_backend.load_model(vars.custmodpth)
         vars.allowsp = True
+        loadmodelsettings()
+        loadsettings()
+        tpu_mtj_backend.load_model(vars.custmodpth, **vars.modelconfig)
         vars.modeldim = int(tpu_mtj_backend.params["d_model"])
         tokenizer = tpu_mtj_backend.tokenizer
+    else:
+        loadsettings()
 
 # Set up Flask routes
 @app.route('/')
@@ -1161,6 +1485,7 @@ def download():
     js["authorsnote"] = vars.authornote
     js["anotetemplate"] = vars.authornotetemplate
     js["actions"]     = tuple(vars.actions.values())
+    js["actions_metadata"] = vars.actions_metadata
     js["worldinfo"]   = []
         
     # Extract only the important bits of WI
@@ -1294,7 +1619,7 @@ def lua_decode(tokens):
         from transformers import GPT2TokenizerFast
         global tokenizer
         tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", cache_dir="cache/")
-    return tokenizer.decode(tokens)
+    return utils.decodenewlines(tokenizer.decode(tokens))
 
 #==================================================================#
 #  Encode string into list of token IDs using current tokenizer
@@ -1306,7 +1631,7 @@ def lua_encode(string):
         from transformers import GPT2TokenizerFast
         global tokenizer
         tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", cache_dir="cache/")
-    return tokenizer.encode(string, max_length=int(4e9), truncation=True)
+    return tokenizer.encode(utils.encodenewlines(string), max_length=int(4e9), truncation=True)
 
 #==================================================================#
 #  Computes context given a submission, Lua array of entry UIDs and a Lua array
@@ -1346,7 +1671,7 @@ def lua_compute_context(submission, entries, folders, kwargs):
         anotetxt,
         actions,
     )
-    return tokenizer.decode(txt)
+    return utils.decodenewlines(tokenizer.decode(txt))
 
 #==================================================================#
 #  Get property of a world info entry given its UID and property name
@@ -1625,7 +1950,11 @@ def lua_set_chunk(k, v):
             del vars._actions[chunk-1]
         vars.lua_deleted.add(chunk)
         if(not hasattr(vars, "_actions") or vars._actions is not vars.actions):
-            del vars.actions[chunk-1]
+            #Instead of deleting we'll blank out the text. This way our actions and actions_metadata stay in sync and we can restore the chunk on an undo
+            vars.actions[chunk-1] = ""
+            vars.actions_metadata[chunk-1]['Alternative Text'] = [{"Text": vars.actions_metadata[chunk-1]['Selected Text'], "Pinned": False, "Editted": True}] + vars.actions_metadata[chunk-1]['Alternative Text']
+            vars.actions_metadata[chunk-1]['Selected Text'] = ''
+            send_debug()
     else:
         if(k == 0):
             print(colors.GREEN + f"{lua_log_format_name(vars.lua_koboldbridge.logging_name)} edited prompt chunk" + colors.END)
@@ -1642,6 +1971,9 @@ def lua_set_chunk(k, v):
                 vars._actions[chunk-1] = v
             vars.lua_edited.add(chunk)
             vars.actions[chunk-1] = v
+            vars.actions_metadata[chunk-1]['Alternative Text'] = [{"Text": vars.actions_metadata[chunk-1]['Selected Text'], "Pinned": False, "Editted": True}] + vars.actions_metadata[chunk-1]['Alternative Text']
+            vars.actions_metadata[chunk-1]['Selected Text'] = v
+            send_debug()
 
 #==================================================================#
 #  Get model type as "gpt-2-xl", "gpt-neo-2.7B", etc.
@@ -1785,7 +2117,7 @@ def do_connect():
     emit('from_server', {'cmd': 'setchatname', 'data': vars.chatname})
     emit('from_server', {'cmd': 'setanotetemplate', 'data': vars.authornotetemplate})
     emit('from_server', {'cmd': 'connected', 'smandelete': vars.smandelete, 'smanrename': vars.smanrename, 'modelname': getmodelname()})
-    if(vars.remote):
+    if(vars.host):
         emit('from_server', {'cmd': 'runs_remotely'})
     if(vars.allowsp):
         emit('from_server', {'cmd': 'allowsp', 'data': vars.allowsp})
@@ -1831,7 +2163,8 @@ def do_connect():
 #==================================================================#
 @socketio.on('message')
 def get_message(msg):
-    print("{0}Data received:{1}{2}".format(colors.GREEN, msg, colors.END))
+    if not vars.quiet:
+        print("{0}Data received:{1}{2}".format(colors.GREEN, msg, colors.END))
     # Submit action
     if(msg['cmd'] == 'submit'):
         if(vars.mode == "play"):
@@ -1870,6 +2203,9 @@ def get_message(msg):
     # Back/Undo Action
     elif(msg['cmd'] == 'back'):
         actionback()
+    # Forward/Redo Action
+    elif(msg['cmd'] == 'redo'):
+        actionredo()
     # EditMode Action (old)
     elif(msg['cmd'] == 'edit'):
         if(vars.mode == "play"):
@@ -1891,13 +2227,13 @@ def get_message(msg):
         deleterequest()
     elif(msg['cmd'] == 'memory'):
         togglememorymode()
-    elif(not vars.remote and msg['cmd'] == 'savetofile'):
+    elif(not vars.host and msg['cmd'] == 'savetofile'):
         savetofile()
-    elif(not vars.remote and msg['cmd'] == 'loadfromfile'):
+    elif(not vars.host and msg['cmd'] == 'loadfromfile'):
         loadfromfile()
     elif(msg['cmd'] == 'loadfromstring'):
         loadRequest(json.loads(msg['data']), filename=msg['filename'])
-    elif(not vars.remote and msg['cmd'] == 'import'):
+    elif(not vars.host and msg['cmd'] == 'import'):
         importRequest()
     elif(msg['cmd'] == 'newgame'):
         newGameRequest()
@@ -2107,6 +2443,8 @@ def get_message(msg):
         vars.saveow   = False
     elif(msg['cmd'] == 'seqsel'):
         selectsequence(msg['data'])
+    elif(msg['cmd'] == 'seqpin'):
+        pinsequence(msg['data'])
     elif(msg['cmd'] == 'setnumseq'):
         vars.numseqs = int(msg['data'])
         emit('from_server', {'cmd': 'setlabelnumseq', 'data': msg['data']})
@@ -2151,8 +2489,13 @@ def get_message(msg):
         vars.nogenmod = msg['data']
         settingschanged()
         refresh_settings()
-    elif(not vars.remote and msg['cmd'] == 'importwi'):
+    elif(not vars.host and msg['cmd'] == 'importwi'):
         wiimportrequest()
+    elif(msg['cmd'] == 'debug'):
+        vars.debug = msg['data']
+        emit('from_server', {'cmd': 'set_debug', 'data': msg['data']}, broadcast=True)
+        if vars.debug:
+            send_debug()
 
 #==================================================================#
 #  Send userscripts list to client
@@ -2207,152 +2550,6 @@ def sendsettings():
             vars.formatoptns[frm["id"]] = False;
 
 #==================================================================#
-#  Take settings from vars and write them to client settings file
-#==================================================================#
-def savesettings():
-     # Build json to write
-    js = {}
-    js["apikey"]      = vars.apikey
-    js["andepth"]     = vars.andepth
-    js["temp"]        = vars.temp
-    js["top_p"]       = vars.top_p
-    js["top_k"]       = vars.top_k
-    js["tfs"]         = vars.tfs
-    js["rep_pen"]     = vars.rep_pen
-    js["rep_pen_slope"] = vars.rep_pen_slope
-    js["rep_pen_range"] = vars.rep_pen_range
-    js["genamt"]      = vars.genamt
-    js["max_length"]  = vars.max_length
-    js["ikgen"]       = vars.ikgen
-    js["formatoptns"] = vars.formatoptns
-    js["numseqs"]     = vars.numseqs
-    js["widepth"]     = vars.widepth
-    js["useprompt"]   = vars.useprompt
-    js["adventure"]   = vars.adventure
-    js["chatmode"]    = vars.chatmode
-    js["chatname"]    = vars.chatname
-    js["dynamicscan"] = vars.dynamicscan
-    js["nopromptgen"] = vars.nopromptgen
-    js["rngpersist"]  = vars.rngpersist
-    js["nogenmod"]    = vars.nogenmod
-    js["autosave"]    = vars.autosave
-    js["welcome"]     = vars.welcome
-    js["newlinemode"] = vars.newlinemode
-
-    js["antemplate"]  = vars.setauthornotetemplate
-
-    js["userscripts"] = vars.userscripts
-    js["corescript"]  = vars.corescript
-    js["softprompt"]  = vars.spfilename
-
-    # Write it
-    if not os.path.exists('settings'):
-        os.mkdir('settings')
-    file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "w")
-    try:
-        file.write(json.dumps(js, indent=3))
-    finally:
-        file.close()
-
-#==================================================================#
-#  Read settings from client file JSON and send to vars
-#==================================================================#
-def loadsettings():
-    if(path.exists("settings/" + getmodelname().replace('/', '_') + ".settings")):
-        # Read file contents into JSON object
-        file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "r")
-        js   = json.load(file)
-        
-        # Copy file contents to vars
-        if("apikey" in js):
-            vars.apikey     = js["apikey"]
-        if("andepth" in js):
-            vars.andepth    = js["andepth"]
-        if("temp" in js):
-            vars.temp       = js["temp"]
-        if("top_p" in js):
-            vars.top_p      = js["top_p"]
-        if("top_k" in js):
-            vars.top_k      = js["top_k"]
-        if("tfs" in js):
-            vars.tfs        = js["tfs"]
-        if("rep_pen" in js):
-            vars.rep_pen    = js["rep_pen"]
-        if("rep_pen_slope" in js):
-            vars.rep_pen_slope = js["rep_pen_slope"]
-        if("rep_pen_range" in js):
-            vars.rep_pen_range = js["rep_pen_range"]
-        if("genamt" in js):
-            vars.genamt     = js["genamt"]
-        if("max_length" in js):
-            vars.max_length = js["max_length"]
-        if("ikgen" in js):
-            vars.ikgen      = js["ikgen"]
-        if("formatoptns" in js):
-            vars.formatoptns = js["formatoptns"]
-        if("numseqs" in js):
-            vars.numseqs = js["numseqs"]
-        if("widepth" in js):
-            vars.widepth = js["widepth"]
-        if("useprompt" in js):
-            vars.useprompt = js["useprompt"]
-        if("adventure" in js):
-            vars.adventure = js["adventure"]
-        if("chatmode" in js):
-            vars.chatmode = js["chatmode"]
-        if("chatname" in js):
-            vars.chatname = js["chatname"]
-        if("dynamicscan" in js):
-            vars.dynamicscan = js["dynamicscan"]
-        if("nopromptgen" in js):
-            vars.nopromptgen = js["nopromptgen"]
-        if("rngpersist" in js):
-            vars.rngpersist = js["rngpersist"]
-        if("nogenmod" in js):
-            vars.nogenmod = js["nogenmod"]
-        if("autosave" in js):
-            vars.autosave = js["autosave"]
-        if("newlinemode" in js):
-            vars.newlinemode = js["newlinemode"]
-        if("welcome" in js):
-            vars.welcome = js["welcome"]
-
-        if("antemplate" in js):
-            vars.setauthornotetemplate = js["antemplate"]
-            if(not vars.gamestarted):
-                vars.authornotetemplate = vars.setauthornotetemplate
-        
-        if("userscripts" in js):
-            vars.userscripts = []
-            for userscript in js["userscripts"]:
-                if type(userscript) is not str:
-                    continue
-                userscript = userscript.strip()
-                if len(userscript) != 0 and all(q not in userscript for q in ("..", ":")) and all(userscript[0] not in q for q in ("/", "\\")) and os.path.exists(fileops.uspath(userscript)):
-                    vars.userscripts.append(userscript)
-
-        if("corescript" in js and type(js["corescript"]) is str and all(q not in js["corescript"] for q in ("..", ":")) and all(js["corescript"][0] not in q for q in ("/", "\\"))):
-            vars.corescript = js["corescript"]
-        else:
-            vars.corescript = "default.lua"
-        
-        if(vars.allowsp and "softprompt" in js and type(js["softprompt"]) is str and all(q not in js["softprompt"] for q in ("..", ":")) and (len(js["softprompt"]) == 0 or all(js["softprompt"][0] not in q for q in ("/", "\\")))):
-            spRequest(js["softprompt"])
-        else:
-            vars.spfilename = ""
-
-        file.close()
-
-
-#==================================================================#
-#  Don't save settings unless 2 seconds have passed without modification
-#==================================================================#
-@debounce(2)
-def settingschanged():
-    print("{0}Saving settings!{1}".format(colors.GREEN, colors.END))
-    savesettings()
-
-#==================================================================#
 #  Set value of gamesaved
 #==================================================================#
 def setgamesaved(gamesaved):
@@ -2403,10 +2600,6 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
             data = re.sub(r'\n+', ' ', data)
             if(len(data)):
                 data = f"\n{vars.chatname} : {data}\n"
-        
-        # </s> mode
-        if(vars.newlinemode == "s"):
-            data = data.replace('\n', "</s>")
         
         # If we're not continuing, store a copy of the raw input
         if(data != ""):
@@ -2481,7 +2674,25 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                     vars.prompt = data
                 else:
                     vars.actions.append(data)
+                    # we now need to update the actions_metadata
+                    # we'll have two conditions. 
+                    # 1. This is totally new (user entered) 
+                    if vars.actions.get_next_id()-1 not in vars.actions_metadata:
+                        vars.actions_metadata.append({"Selected Text": data, "Alternative Text": []})
+                    else:
+                    # 2. We've selected a chunk of text that is was presented previously
+                        try:
+                            alternatives = [item['Text'] for item in vars.actions_metadata[len(vars.actions)-1]["Alternative Text"]]
+                        except:
+                            print(len(vars.actions))
+                            print(vars.actions_metadata)
+                            raise
+                        if data in alternatives:
+                            alternatives = [item for item in vars.actions_metadata[vars.actions.get_next_id()-1 ]["Alternative Text"] if item['Text'] != data]
+                            vars.actions_metadata[vars.actions.get_next_id()-1]["Alternative Text"] = alternatives
+                        vars.actions_metadata[vars.actions.get_next_id()-1]["Selected Text"] = data
                 update_story_chunk('last')
+                send_debug()
 
             if(not vars.noai and vars.lua_koboldbridge.generating):
                 # Off to the tokenizer!
@@ -2536,6 +2747,15 @@ def actionretry(data):
     # Remove last action if possible and resubmit
     if(vars.gamestarted if vars.useprompt else len(vars.actions) > 0):
         if(not vars.recentback and len(vars.actions) != 0 and len(vars.genseqs) == 0):  # Don't pop if we're in the "Select sequence to keep" menu or if there are no non-prompt actions
+            # We are going to move the selected text to alternative text in the actions_metadata variable so we can redo this action
+            vars.actions_metadata[vars.actions.get_next_id()-1 ]['Alternative Text'] = [{'Text': vars.actions_metadata[vars.actions.get_next_id()-1 ]['Selected Text'],
+                                                                        'Pinned': False,
+                                                                        "Previous Selection": True,
+                                                                        "Edited": False}] + vars.actions_metadata[vars.actions.get_next_id()-1 ]['Alternative Text']
+            vars.actions_metadata[vars.actions.get_next_id()-1]['Selected Text'] = ""
+            
+            
+            
             last_key = vars.actions.get_last_key()
             vars.actions.pop()
             remove_story_chunk(last_key + 1)
@@ -2543,6 +2763,7 @@ def actionretry(data):
         vars.recentedit = False
         vars.lua_koboldbridge.feedback = None
         actionsubmit("", actionmode=vars.actionmode, force_submit=True)
+        send_debug()
     elif(not vars.useprompt):
         emit('from_server', {'cmd': 'errmsg', 'data': "Please enable \"Always Add Prompt\" to retry with your prompt."})
 
@@ -2554,14 +2775,46 @@ def actionback():
         return
     # Remove last index of actions and refresh game screen
     if(len(vars.genseqs) == 0 and len(vars.actions) > 0):
+        # We are going to move the selected text to alternative text in the actions_metadata variable so we can redo this action
+        vars.actions_metadata[vars.actions.get_next_id()-1 ]['Alternative Text'] = [{'Text': vars.actions_metadata[vars.actions.get_next_id()-1 ]['Selected Text'],
+                                                                    'Pinned': False,
+                                                                    "Previous Selection": True,
+                                                                    "Edited": False}] + vars.actions_metadata[vars.actions.get_next_id()-1 ]['Alternative Text']
+        vars.actions_metadata[vars.actions.get_next_id()-1 ]['Selected Text'] = ""
+    
         last_key = vars.actions.get_last_key()
         vars.actions.pop()
         vars.recentback = True
         remove_story_chunk(last_key + 1)
+        #for the redo to not get out of whack, need to reset the max # in the actions sequence
+        vars.actions.set_next_id(vars.actions.get_next_id()-1)
     elif(len(vars.genseqs) == 0):
         emit('from_server', {'cmd': 'errmsg', 'data': "Cannot delete the prompt."})
     else:
         vars.genseqs = []
+    send_debug()
+        
+def actionredo():
+    i = 0
+    if vars.actions.get_last_key()+1 in vars.actions_metadata:
+        genout = [{"generated_text": item['Text']} for item in vars.actions_metadata[vars.actions.get_last_key()+1]['Alternative Text'] if (item["Previous Selection"]==True)]
+        if len(genout) > 0:
+            genout = genout + [{"generated_text": item['Text']} for item in vars.actions_metadata[vars.actions.get_last_key()+1]['Alternative Text'] if (item["Pinned"]==True) and (item["Previous Selection"]==False)]
+            
+            if len(genout) == 1:
+                vars.actions_metadata[vars.actions.get_last_key()+1]['Alternative Text'] = [item for item in vars.actions_metadata[vars.actions.get_last_key()+1]['Alternative Text'] if (item["Previous Selection"]!=True)]
+                genresult(genout[0]['generated_text'], flash=True)
+            else:
+                # Store sequences in memory until selection is made
+                vars.genseqs = genout
+                
+                
+                # Send sequences to UI for selection
+                genout = [[item['Text'], "redo"] for item in vars.actions_metadata[vars.actions.get_last_key()+1]['Alternative Text'] if (item["Previous Selection"]==True)]
+                emit('from_server', {'cmd': 'genseqs', 'data': genout}, broadcast=True)
+    else:
+        emit('from_server', {'cmd': 'popuperror', 'data': "There's nothing to undo"}, broadcast=True)
+    send_debug()
 
 #==================================================================#
 #  
@@ -2598,21 +2851,21 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
         tokenizer = GPT2TokenizerFast.from_pretrained("gpt2", cache_dir="cache/")
 
     # Calculate token budget
-    prompttkns = tokenizer.encode(vars.comregex_ai.sub('', vars.prompt), max_length=int(2e9), truncation=True)
+    prompttkns = tokenizer.encode(utils.encodenewlines(vars.comregex_ai.sub('', vars.prompt)), max_length=int(2e9), truncation=True)
     lnprompt   = len(prompttkns)
 
-    memtokens = tokenizer.encode(mem, max_length=int(2e9), truncation=True)
+    memtokens = tokenizer.encode(utils.encodenewlines(mem), max_length=int(2e9), truncation=True)
     lnmem     = len(memtokens)
     if(lnmem > vars.max_length - lnsp - vars.genamt - budget_deduction):
         raise OverflowError("The memory in your story is too long. Please either write a shorter memory text or increase the Max Tokens setting. If you are using a soft prompt, additionally consider using a smaller soft prompt.")
 
-    witokens  = tokenizer.encode(winfo, max_length=int(2e9), truncation=True)
+    witokens  = tokenizer.encode(utils.encodenewlines(winfo), max_length=int(2e9), truncation=True)
     lnwi      = len(witokens)
     if(lnmem + lnwi > vars.max_length - lnsp - vars.genamt - budget_deduction):
         raise OverflowError("The current active world info keys take up too many tokens. Please either write shorter world info, decrease World Info Depth or increase the Max Tokens setting. If you are using a soft prompt, additionally consider using a smaller soft prompt.")
 
     if(anotetxt != ""):
-        anotetkns = tokenizer.encode(anotetxt, max_length=int(2e9), truncation=True)
+        anotetkns = tokenizer.encode(utils.encodenewlines(anotetxt), max_length=int(2e9), truncation=True)
         lnanote   = len(anotetkns)
         if(lnmem + lnwi + lnanote > vars.max_length - lnsp - vars.genamt - budget_deduction):
             raise OverflowError("The author's note in your story is too long. Please either write a shorter author's note or increase the Max Tokens setting. If you are using a soft prompt, additionally consider using a smaller soft prompt.")
@@ -2622,7 +2875,7 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
     else:
         budget = vars.max_length - lnsp - lnmem - lnanote - lnwi - vars.genamt - budget_deduction
 
-    lnsubmission = len(tokenizer.encode(vars.comregex_ai.sub('', submission), max_length=int(2e9), truncation=True)) if submission is not None else 0
+    lnsubmission = len(tokenizer.encode(utils.encodenewlines(vars.comregex_ai.sub('', submission)), max_length=int(2e9), truncation=True)) if submission is not None else 0
     maybe_lnprompt = lnprompt if vars.useprompt and actionlen > 0 else 0
 
     if(lnmem + lnwi + lnanote + maybe_lnprompt + lnsubmission > vars.max_length - lnsp - vars.genamt - budget_deduction):
@@ -2651,7 +2904,7 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
             assert budget >= 0
             if(budget <= 0):
                 break
-            acttkns = tokenizer.encode(chunk, max_length=int(2e9), truncation=True)
+            acttkns = tokenizer.encode(utils.encodenewlines(chunk), max_length=int(2e9), truncation=True)
             tknlen = len(acttkns)
             if(tknlen < budget):
                 tokens = acttkns + tokens
@@ -2710,18 +2963,18 @@ def calcsubmit(txt):
             if(not vars.model in ["Colab", "OAI", "TPUMeshTransformerGPTJ"]):
                 generate(subtxt, min, max, found_entries=found_entries)
             elif(vars.model == "Colab"):
-                sendtocolab(tokenizer.decode(subtxt), min, max)
+                sendtocolab(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
             elif(vars.model == "OAI"):
-                oairequest(tokenizer.decode(subtxt), min, max)
+                oairequest(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
             elif(vars.model == "TPUMeshTransformerGPTJ"):
                 tpumtjgenerate(subtxt, min, max, found_entries=found_entries)
         else:
             if(not vars.model in ["Colab", "OAI", "TPUMeshTransformerGPTJ"]):
                 generate(subtxt, min, max, found_entries=found_entries)
             elif(vars.model == "Colab"):
-                sendtocolab(tokenizer.decode(subtxt), min, max)
+                sendtocolab(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
             elif(vars.model == "OAI"):
-                oairequest(tokenizer.decode(subtxt), min, max)
+                oairequest(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
             elif(vars.model == "TPUMeshTransformerGPTJ"):
                 tpumtjgenerate(subtxt, min, max, found_entries=found_entries)
                     
@@ -2816,7 +3069,6 @@ def _generate(txt, minimum, maximum, found_entries):
             genout = generator(
                 gen_in, 
                 do_sample=True, 
-                min_length=minimum, 
                 max_length=int(2e9),
                 repetition_penalty=1.1,
                 bad_words_ids=vars.badwordsids,
@@ -2839,7 +3091,7 @@ def _generate(txt, minimum, maximum, found_entries):
                     genout[r][genout.shape[-1] - already_generated + c] = vars.lua_koboldbridge.generated[r+1][c+1]
             encoded = []
             for i in range(vars.numseqs):
-                txt = tokenizer.decode(genout[i, -already_generated:])
+                txt = utils.decodenewlines(tokenizer.decode(genout[i, -already_generated:]))
                 winfo, mem, anotetxt, _found_entries = calcsubmitbudgetheader(txt, force_use_txt=True, actions=vars._actions)
                 found_entries[i].update(_found_entries)
                 txt, _, _ = calcsubmitbudget(len(vars._actions), winfo, mem, anotetxt, vars._actions, submission=txt)
@@ -2877,10 +3129,11 @@ def generate(txt, minimum, maximum, found_entries=None):
         found_entries = set()
     found_entries = tuple(found_entries.copy() for _ in range(vars.numseqs))
 
-    print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.YELLOW, minimum, maximum, tokenizer.decode(txt), colors.END))
+    if not vars.quiet:
+        print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.YELLOW, minimum, maximum, utils.decodenewlines(tokenizer.decode(txt)), colors.END))
 
     # Store context in memory to use it for comparison with generated content
-    vars.lastctx = tokenizer.decode(txt)
+    vars.lastctx = utils.decodenewlines(tokenizer.decode(txt))
 
     # Clear CUDA cache if using GPU
     if(vars.hascuda and (vars.usegpu or vars.breakmodel)):
@@ -2907,7 +3160,7 @@ def generate(txt, minimum, maximum, found_entries=None):
 
     for i in range(vars.numseqs):
         vars.lua_koboldbridge.generated[i+1][vars.generated_tkns] = int(genout[i, -1].item())
-        vars.lua_koboldbridge.outputs[i+1] = tokenizer.decode(genout[i, -already_generated:])
+        vars.lua_koboldbridge.outputs[i+1] = utils.decodenewlines(tokenizer.decode(genout[i, -already_generated:]))
 
     execute_outmod()
     if(vars.lua_koboldbridge.regeneration_required):
@@ -2917,7 +3170,7 @@ def generate(txt, minimum, maximum, found_entries=None):
             genout.append({"generated_text": vars.lua_koboldbridge.outputs[i+1]})
             assert type(genout[-1]["generated_text"]) is str
     else:
-        genout = [{"generated_text": tokenizer.decode(tokens[-already_generated:])} for tokens in genout]
+        genout = [{"generated_text": utils.decodenewlines(tokenizer.decode(tokens[-already_generated:]))} for tokens in genout]
     
     if(len(genout) == 1):
         genresult(genout[0]["generated_text"])
@@ -2939,7 +3192,8 @@ def generate(txt, minimum, maximum, found_entries=None):
 #  Deal with a single return sequence from generate()
 #==================================================================#
 def genresult(genout, flash=True):
-    print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
+    if not vars.quiet:
+        print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
     
     # Format output before continuing
     genout = applyoutputformatting(genout)
@@ -2954,9 +3208,14 @@ def genresult(genout, flash=True):
         vars.prompt = genout
     else:
         vars.actions.append(genout)
+        if vars.actions.get_next_id()-1 not in vars.actions_metadata:
+            vars.actions_metadata[vars.actions.get_next_id()-1] = {'Selected Text': genout, 'Alternative Text': []}
+        else:
+            vars.actions_metadata[vars.actions.get_next_id()-1]['Selected Text'] = genout
     update_story_chunk('last')
     if(flash):
         emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() + 1 if len(vars.actions) else 0}, broadcast=True)
+    send_debug()
 
 #==================================================================#
 #  Send generator sequences to the UI for selection
@@ -2966,14 +3225,34 @@ def genselect(genout):
     for result in genout:
         # Apply output formatting rules to sequences
         result["generated_text"] = applyoutputformatting(result["generated_text"])
-        print("{0}[Result {1}]\n{2}{3}".format(colors.CYAN, i, result["generated_text"], colors.END))
+        if not vars.quiet:
+            print("{0}[Result {1}]\n{2}{3}".format(colors.CYAN, i, result["generated_text"], colors.END))
         i += 1
     
+    # Add the options to the actions metadata
+    # If we've already generated text for this action but haven't selected one we'll want to kill all non-pinned, non-previous selection, and non-edited options then add the new ones
+    if vars.actions.get_next_id() in vars.actions_metadata:
+        if (vars.actions_metadata[vars.actions.get_next_id()]['Selected Text'] == ""):
+            vars.actions_metadata[vars.actions.get_next_id()]['Alternative Text'] = [{"Text": item['Text'], "Pinned": item['Pinned'], 
+                                                                             "Previous Selection": item["Previous Selection"], 
+                                                                             "Edited": item["Edited"]} for item in vars.actions_metadata[vars.actions.get_next_id()]['Alternative Text'] 
+                                                                             if item['Pinned'] or item["Previous Selection"] or item["Edited"]] + [{"Text": text["generated_text"], 
+                                                                                    "Pinned": False, "Previous Selection": False, "Edited": False} for text in genout]
+        else:
+            vars.actions_metadata[vars.actions.get_next_id()] = {'Selected Text': '', 'Alternative Text': [{"Text": text["generated_text"], "Pinned": False, "Previous Selection": False, "Edited": False} for text in genout]}
+    else:
+        vars.actions_metadata[vars.actions.get_next_id()] = {'Selected Text': '', 'Alternative Text': [{"Text": text["generated_text"], "Pinned": False, "Previous Selection": False, "Edited": False} for text in genout]}
+    
+    genout = [{"generated_text": item['Text']} for item in vars.actions_metadata[vars.actions.get_next_id()]['Alternative Text'] if (item["Previous Selection"]==False) and (item["Edited"]==False)]
+
     # Store sequences in memory until selection is made
     vars.genseqs = genout
     
+    genout = [[item['Text'], "pinned" if item['Pinned'] else "normal"] for item in vars.actions_metadata[vars.actions.get_next_id()]['Alternative Text']  if (item["Previous Selection"]==False) and (item["Edited"]==False)]
+
     # Send sequences to UI for selection
     emit('from_server', {'cmd': 'genseqs', 'data': genout}, broadcast=True)
+    send_debug()
 
 #==================================================================#
 #  Send selected sequence to action log and refresh UI
@@ -2984,6 +3263,9 @@ def selectsequence(n):
     vars.lua_koboldbridge.feedback = vars.genseqs[int(n)]["generated_text"]
     if(len(vars.lua_koboldbridge.feedback) != 0):
         vars.actions.append(vars.lua_koboldbridge.feedback)
+        #We'll want to remove the option from the alternative text and put it in selected text
+        vars.actions_metadata[vars.actions.get_next_id()-1 ]['Alternative Text'] = [item for item in vars.actions_metadata[vars.actions.get_next_id()-1]['Alternative Text'] if item['Text'] != vars.lua_koboldbridge.feedback]
+        vars.actions_metadata[vars.actions.get_next_id()-1 ]['Selected Text'] = vars.lua_koboldbridge.feedback
         update_story_chunk('last')
         emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() + 1 if len(vars.actions) else 0}, broadcast=True)
     emit('from_server', {'cmd': 'hidegenseqs', 'data': ''}, broadcast=True)
@@ -2991,13 +3273,31 @@ def selectsequence(n):
 
     if(vars.lua_koboldbridge.restart_sequence is not None):
         actionsubmit("", actionmode=vars.actionmode, force_submit=True, disable_recentrng=True)
+    send_debug()
+
+#==================================================================#
+#  Pin/Unpin the selected sequence
+#==================================================================#
+def pinsequence(n):
+    if n.isnumeric():
+        text = vars.genseqs[int(n)]['generated_text']
+        if text in [item['Text'] for item in vars.actions_metadata[vars.actions.get_next_id()]['Alternative Text']]:
+            alternatives = vars.actions_metadata[vars.actions.get_next_id()]['Alternative Text']
+            for i in range(len(alternatives)):
+                if alternatives[i]['Text'] == text:
+                    alternatives[i]['Pinned'] = not alternatives[i]['Pinned']
+                    break
+            vars.actions_metadata[vars.actions.get_next_id()]['Alternative Text'] = alternatives
+    send_debug()
+
 
 #==================================================================#
 #  Send transformers-style request to ngrok/colab host
 #==================================================================#
 def sendtocolab(txt, min, max):
     # Log request to console
-    print("{0}Tokens:{1}, Txt:{2}{3}".format(colors.YELLOW, min-1, txt, colors.END))
+    if not vars.quiet:
+        print("{0}Tokens:{1}, Txt:{2}{3}".format(colors.YELLOW, min-1, txt, colors.END))
     
     # Store context in memory to use it for comparison with generated content
     vars.lastctx = txt
@@ -3082,7 +3382,8 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
         found_entries = set()
     found_entries = tuple(found_entries.copy() for _ in range(vars.numseqs))
 
-    print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.YELLOW, minimum, maximum, tokenizer.decode(txt), colors.END))
+    if not vars.quiet:
+        print("{0}Min:{1}, Max:{2}, Txt:{3}{4}".format(colors.YELLOW, minimum, maximum, utils.decodenewlines(tokenizer.decode(txt)), colors.END))
 
     vars._actions = vars.actions
     vars._prompt = vars.prompt
@@ -3125,7 +3426,7 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
 
                 encoded = []
                 for i in range(vars.numseqs):
-                    txt = tokenizer.decode(past[i])
+                    txt = utils.decodenewlines(tokenizer.decode(past[i]))
                     winfo, mem, anotetxt, _found_entries = calcsubmitbudgetheader(txt, force_use_txt=True, actions=vars._actions)
                     found_entries[i].update(_found_entries)
                     txt, _, _ = calcsubmitbudget(len(vars._actions), winfo, mem, anotetxt, vars._actions, submission=txt)
@@ -3177,7 +3478,7 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
         return
 
     for i in range(vars.numseqs):
-        vars.lua_koboldbridge.outputs[i+1] = tokenizer.decode(past[i])
+        vars.lua_koboldbridge.outputs[i+1] = utils.decodenewlines(tokenizer.decode(past[i]))
     genout = past
 
     execute_outmod()
@@ -3188,7 +3489,7 @@ def tpumtjgenerate(txt, minimum, maximum, found_entries=None):
             genout.append({"generated_text": vars.lua_koboldbridge.outputs[i+1]})
             assert type(genout[-1]["generated_text"]) is str
     else:
-        genout = [{"generated_text": tokenizer.decode(txt)} for txt in genout]
+        genout = [{"generated_text": utils.decodenewlines(tokenizer.decode(txt))} for txt in genout]
 
     if(len(genout) == 1):
         genresult(genout[0]["generated_text"])
@@ -3216,14 +3517,14 @@ def getnewcontent(txt):
         return txt
     
     # Tokenize the last context and the generated content
-    ctxtokens = tokenizer.encode(vars.lastctx, max_length=int(2e9), truncation=True)
-    txttokens = tokenizer.encode(txt, max_length=int(2e9), truncation=True)
+    ctxtokens = tokenizer.encode(utils.encodenewlines(vars.lastctx), max_length=int(2e9), truncation=True)
+    txttokens = tokenizer.encode(utils.encodenewlines(txt), max_length=int(2e9), truncation=True)
     dif       = (len(txttokens) - len(ctxtokens)) * -1
     
     # Remove the context from the returned text
     newtokens = txttokens[dif:]
     
-    return tokenizer.decode(newtokens)
+    return utils.decodenewlines(tokenizer.decode(newtokens))
 
 #==================================================================#
 # Applies chosen formatting options to text submitted to AI
@@ -3239,9 +3540,6 @@ def applyinputformatting(txt):
 # Applies chosen formatting options to text returned from AI
 #==================================================================#
 def applyoutputformatting(txt):
-    # Revert S mode on output to maintain compatibility
-    txt = txt.replace('</s>', "\n")
-
     # Use standard quotes and apostrophes
     txt = utils.fixquotes(txt)
 
@@ -3399,12 +3697,17 @@ def editsubmit(data):
     if(vars.editln == 0):
         vars.prompt = data
     else:
+        vars.actions_metadata[vars.editln-1]['Alternative Text'] = vars.actions_metadata[vars.editln-1]['Alternative Text'] + [{"Text": vars.actions[vars.editln-1], "Pinned": False, 
+                                                                         "Previous Selection": False, 
+                                                                         "Edited": True}]
+        vars.actions_metadata[vars.editln-1]['Selected Text'] = data
         vars.actions[vars.editln-1] = data
     
     vars.mode = "play"
     update_story_chunk(vars.editln)
     emit('from_server', {'cmd': 'texteffect', 'data': vars.editln}, broadcast=True)
     emit('from_server', {'cmd': 'editmode', 'data': 'false'})
+    send_debug()
 
 #==================================================================#
 #  
@@ -3416,10 +3719,14 @@ def deleterequest():
         # Send error message
         pass
     else:
-        del vars.actions[vars.editln-1]
+        vars.actions_metadata[vars.editln-1]['Alternative Text'] = [{"Text": vars.actions[vars.editln-1], "Pinned": False, 
+                                                      "Previous Selection": True, "Edited": False}] + vars.actions_metadata[vars.editln-1]['Alternative Text']
+        vars.actions_metadata[vars.editln-1]['Selected Text'] = ''
+        vars.actions[vars.editln-1] = ''
         vars.mode = "play"
         remove_story_chunk(vars.editln)
         emit('from_server', {'cmd': 'editmode', 'data': 'false'})
+    send_debug()
 
 #==================================================================#
 # 
@@ -3433,6 +3740,10 @@ def inlineedit(chunk, data):
         vars.prompt = data
     else:
         if(chunk-1 in vars.actions):
+            vars.actions_metadata[chunk-1]['Alternative Text'] = vars.actions_metadata[chunk-1]['Alternative Text'] + [{"Text": vars.actions[chunk-1], "Pinned": False, 
+                                                                             "Previous Selection": False, 
+                                                                             "Edited": True}]
+            vars.actions_metadata[chunk-1]['Selected Text'] = data
             vars.actions[chunk-1] = data
         else:
             print(f"WARNING: Attempted to edit non-existent chunk {chunk}")
@@ -3441,6 +3752,7 @@ def inlineedit(chunk, data):
     update_story_chunk(chunk)
     emit('from_server', {'cmd': 'texteffect', 'data': chunk}, broadcast=True)
     emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
+    send_debug()
 
 #==================================================================#
 #  
@@ -3456,12 +3768,17 @@ def inlinedelete(chunk):
         emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
     else:
         if(chunk-1 in vars.actions):
-            del vars.actions[chunk-1]
+            vars.actions_metadata[chunk-1]['Alternative Text'] = [{"Text": vars.actions[chunk-1], "Pinned": False, 
+                                                                             "Previous Selection": True, 
+                                                                             "Edited": False}] + vars.actions_metadata[chunk-1]['Alternative Text']
+            vars.actions_metadata[chunk-1]['Selected Text'] = ''
+            vars.actions[chunk-1] = ''
         else:
             print(f"WARNING: Attempted to delete non-existent chunk {chunk}")
         setgamesaved(False)
         remove_story_chunk(chunk)
         emit('from_server', {'cmd': 'editmode', 'data': 'false'}, broadcast=True)
+    send_debug()
 
 #==================================================================#
 #   Toggles the game mode for memory editing and sends UI commands
@@ -3810,7 +4127,8 @@ def anotesubmit(data, template=""):
 #==================================================================#
 def ikrequest(txt):
     # Log request to console
-    print("{0}Len:{1}, Txt:{2}{3}".format(colors.YELLOW, len(txt), txt, colors.END))
+    if not vars.quiet:
+        print("{0}Len:{1}, Txt:{2}{3}".format(colors.YELLOW, len(txt), txt, colors.END))
     
     # Build request JSON data
     reqdata = {
@@ -3847,11 +4165,21 @@ def ikrequest(txt):
             genout = vars.lua_koboldbridge.outputs[1]
             assert genout is str
 
-        print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
+        if not vars.quiet:
+            print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
         vars.actions.append(genout)
+        if vars.actions.get_next_id()-1 in vars.actions_metadata:
+            vars.actions_metadata[vars.actions.get_next_id()-1] = {"Selected Text": genout, "Alternative Text": []}
+        else:
+        # 2. We've selected a chunk of text that is was presented previously
+            alternatives = [item['Text'] for item in vars.actions_metadata[vars.actions.get_next_id()-1]["Alternative Text"]]
+            if genout in alternatives:
+                alternatives = [item for item in vars.actions_metadata[vars.actions.get_next_id()-1]["Alternative Text"] if item['Text'] != genout]
+                vars.actions_metadata[vars.actions.get_next_id()-1]["Alternative Text"] = alternatives
+            vars.actions_metadata[vars.actions.get_next_id()-1]["Selected Text"] = genout
         update_story_chunk('last')
         emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() + 1 if len(vars.actions) else 0}, broadcast=True)
-        
+        send_debug()
         set_aibusy(0)
     else:
         # Send error message to web client
@@ -3870,7 +4198,8 @@ def ikrequest(txt):
 #==================================================================#
 def oairequest(txt, min, max):
     # Log request to console
-    print("{0}Len:{1}, Txt:{2}{3}".format(colors.YELLOW, len(txt), txt, colors.END))
+    if not vars.quiet:
+        print("{0}Len:{1}, Txt:{2}{3}".format(colors.YELLOW, len(txt), txt, colors.END))
     
     # Store context in memory to use it for comparison with generated content
     vars.lastctx = txt
@@ -3906,11 +4235,21 @@ def oairequest(txt, min, max):
             genout = vars.lua_koboldbridge.outputs[1]
             assert genout is str
 
-        print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
+        if not vars.quiet:
+            print("{0}{1}{2}".format(colors.CYAN, genout, colors.END))
         vars.actions.append(genout)
+        if vars.actions.get_next_id()-1 in vars.actions_metadata:
+            vars.actions_metadata[vars.actions.get_next_id()-1] = {"Selected Text": genout, "Alternative Text": []}
+        else:
+        # 2. We've selected a chunk of text that is was presented previously
+            alternatives = [item['Text'] for item in vars.actions_metadata[vars.actions.get_next_id()-1]["Alternative Text"]]
+            if genout in alternatives:
+                alternatives = [item for item in vars.actions_metadata[vars.actions.get_next_id()-1 ]["Alternative Text"] if item['Text'] != genout]
+                vars.actions_metadata[vars.actions.get_next_id()-1 ]["Alternative Text"] = alternatives
+            vars.actions_metadata[vars.actions.get_next_id()-1 ]["Selected Text"] = genout
         update_story_chunk('last')
         emit('from_server', {'cmd': 'texteffect', 'data': vars.actions.get_last_key() + 1 if len(vars.actions) else 0}, broadcast=True)
-        
+        send_debug()
         set_aibusy(0)
     else:
         # Send error message to web client            
@@ -3938,12 +4277,15 @@ def exitModes():
 #==================================================================#
 #  Launch in-browser save prompt
 #==================================================================#
-def saveas(name):
+def saveas(data):
+    
+    name = data['name']
+    savepins = data['pins']
     # Check if filename exists already
     name = utils.cleanfilename(name)
     if(not fileops.saveexists(name) or (vars.saveow and vars.svowname == name)):
         # All clear to save
-        e = saveRequest(fileops.storypath(name))
+        e = saveRequest(fileops.storypath(name), savepins=savepins)
         vars.saveow = False
         vars.svowname = ""
         if(e is None):
@@ -4019,7 +4361,7 @@ def savetofile():
 #==================================================================#
 #  Save the story to specified path
 #==================================================================#
-def saveRequest(savpath):    
+def saveRequest(savpath, savepins=True):    
     if(savpath):
         # Leave Edit/Memory mode before continuing
         exitModes()
@@ -4035,6 +4377,8 @@ def saveRequest(savpath):
         js["authorsnote"] = vars.authornote
         js["anotetemplate"] = vars.authornotetemplate
         js["actions"]     = tuple(vars.actions.values())
+        if savepins:
+            js["actions_metadata"]     = vars.actions_metadata
         js["worldinfo"]   = []
         js["wifolders_d"] = vars.wifolders_d
         js["wifolders_l"] = vars.wifolders_l
@@ -4160,6 +4504,36 @@ def loadRequest(loadpath, filename=None):
         vars.actions = structures.KoboldStoryRegister()
         actions = collections.deque(js["actions"])
 
+        if "actions_metadata" in js:
+            
+            if type(js["actions_metadata"]) == dict:
+                temp = js["actions_metadata"]
+                vars.actions_metadata = {}
+                #we need to redo the numbering of the actions_metadata since the actions list doesn't preserve it's number on saving
+                if len(temp) > 0:
+                    counter = 0
+                    for i in range(max(temp)):
+                        if i in temp:
+                            vars.actions_metadata[counter] = temp[i]
+                            counter += 1
+                del temp
+            else:
+                #fix if we're using the old metadata format
+                vars.actions_metadata = {}
+                i = 0
+                
+                for text in js['actions']:
+                    vars.actions_metadata[i] = {'Selected Text': text, 'Alternative Text': []}
+                    i+=1
+        else:
+            vars.actions_metadata = {}
+            i = 0
+            
+            for text in js['actions']:
+                vars.actions_metadata[i] = {'Selected Text': text, 'Alternative Text': []}
+                i+=1
+                
+
         if(len(vars.prompt.strip()) == 0):
             while(len(actions)):
                 action = actions.popleft()
@@ -4243,60 +4617,6 @@ def loadRequest(loadpath, filename=None):
         print("{0}Story loaded from {1}!{2}".format(colors.GREEN, filename, colors.END))
 
 #==================================================================#
-#  Load a soft prompt from a file
-#==================================================================#
-def spRequest(filename):
-    vars.spfilename = ""
-    settingschanged()
-
-    if(len(filename) == 0):
-        vars.sp = None
-        vars.sp_length = 0
-        return
-
-    global np
-    if 'np' not in globals():
-        import numpy as np
-
-    z, version, shape, fortran_order, dtype = fileops.checksp(filename, vars.modeldim)
-    assert isinstance(z, zipfile.ZipFile)
-    with z.open('meta.json') as f:
-        vars.spmeta = json.load(f)
-    z.close()
-
-    with np.load(fileops.sppath(filename), allow_pickle=False) as f:
-        tensor = f['tensor.npy']
-
-    # If the tensor is in bfloat16 format, convert it to float32
-    if(tensor.dtype == 'V2'):
-        tensor.dtype = np.uint16
-        tensor = np.uint32(tensor) << 16
-        tensor.dtype = np.float32
-
-    if(tensor.dtype != np.float16):
-        tensor = np.float32(tensor)
-    assert not np.isinf(tensor).any() and not np.isnan(tensor).any()
-
-    vars.sp_length = tensor.shape[-2]
-    vars.spmeta["n_tokens"] = vars.sp_length
-
-    if(vars.model in ("TPUMeshTransformerGPTJ",)):
-        rows = tensor.shape[0]
-        padding_amount = tpu_mtj_backend.params["seq"] - (tpu_mtj_backend.params["seq"] % -tpu_mtj_backend.params["cores_per_replica"]) - rows
-        tensor = np.pad(tensor, ((0, padding_amount), (0, 0)))
-        tensor = tensor.reshape(
-            tpu_mtj_backend.params["cores_per_replica"],
-            -1,
-            tpu_mtj_backend.params["d_model"],
-        )
-        vars.sp = tpu_mtj_backend.shard_xmap(np.float32(tensor))
-    else:
-        vars.sp = torch.from_numpy(tensor)
-
-    vars.spfilename = filename
-    settingschanged()
-
-#==================================================================#
 # Import an AIDungon game exported with Mimi's tool
 #==================================================================#
 def importRequest():
@@ -4371,6 +4691,7 @@ def importgame():
         vars.authornote  = ref["authorsNote"] if type(ref["authorsNote"]) is str else ""
         vars.authornotetemplate = "[Author's note: <|>]"
         vars.actions     = structures.KoboldStoryRegister()
+        vars.actions_metadata = {}
         vars.worldinfo   = []
         vars.worldinfo_i = []
         vars.worldinfo_u = {}
@@ -4468,6 +4789,7 @@ def importAidgRequest(id):
         vars.authornote  = js["authorsNote"]
         vars.authornotetemplate = "[Author's note: <|>]"
         vars.actions     = structures.KoboldStoryRegister()
+        vars.actions_metadata = {}
         vars.worldinfo   = []
         vars.worldinfo_i = []
         vars.worldinfo_u = {}
@@ -4576,7 +4898,8 @@ def wiimportrequest():
                 if(vars.worldinfo[-1]["folder"] is not None):
                     vars.wifolders_u[vars.worldinfo[-1]["folder"]].append(vars.worldinfo[-1])
         
-        print("{0}".format(vars.worldinfo[0]))
+        if not vars.quiet:
+            print("{0}".format(vars.worldinfo[0]))
                 
         # Refresh game screen
         setgamesaved(False)
@@ -4594,6 +4917,7 @@ def newGameRequest():
     vars.prompt      = ""
     vars.memory      = ""
     vars.actions     = structures.KoboldStoryRegister()
+    vars.actions_metadata = {}
     
     vars.authornote  = ""
     vars.authornotetemplate = vars.setauthornotetemplate
@@ -4638,16 +4962,23 @@ def randomGameRequest(topic, memory=""):
     vars.memory      = memory
     emit('from_server', {'cmd': 'setmemory', 'data': vars.memory}, broadcast=True)
 
-# Load desired settings from both the model and the users config file
-loadsettings()
-
 # Prevent tokenizer from taking extra time the first time it's used
 def __preempt_tokenizer():
     if("tokenizer" not in globals()):
         return
-    tokenizer.decode([25678, 559])
-    tokenizer.encode("eunoia")
+    utils.decodenewlines(tokenizer.decode([25678, 559]))
+    tokenizer.encode(utils.encodenewlines("eunoia"))
 threading.Thread(target=__preempt_tokenizer).start()
+
+# Load soft prompt specified by the settings file, if applicable
+if(path.exists("settings/" + getmodelname().replace('/', '_') + ".settings")):
+    file = open("settings/" + getmodelname().replace('/', '_') + ".settings", "r")
+    js   = json.load(file)
+    if(vars.allowsp and "softprompt" in js and type(js["softprompt"]) is str and all(q not in js["softprompt"] for q in ("..", ":")) and (len(js["softprompt"]) == 0 or all(js["softprompt"][0] not in q for q in ("/", "\\")))):
+        spRequest(js["softprompt"])
+    else:
+        vars.spfilename = ""
+    file.close()
 
 # Precompile TPU backend if required
 if(vars.model in ("TPUMeshTransformerGPTJ",)):
@@ -4677,6 +5008,13 @@ if(vars.model in ("TPUMeshTransformerGPTJ",)):
             },
         ).start()
 
+def send_debug():
+    if vars.debug:
+        debug_info = ""
+        for variable in [["Newline Mode", vars.newlinemode], ["Action Length", vars.actions.get_last_key()], ["Actions Metadata Length", max(vars.actions_metadata) if len(vars.actions_metadata) > 0 else 0], ["Actions Metadata", vars.actions_metadata]]:
+            debug_info = "{}{}: {}\n".format(debug_info, variable[0], variable[1])
+        emit('from_server', {'cmd': 'debug_info', 'data': debug_info}, broadcast=True)
+    
 #==================================================================#
 #  Final startup commands to launch Flask app
 #==================================================================#
@@ -4687,16 +5025,19 @@ if __name__ == "__main__":
     # Start Flask/SocketIO (Blocking, so this must be last method!)
     
     #socketio.run(app, host='0.0.0.0', port=5000)
-    if(vars.remote):
+    if(vars.host):
         if(args.ngrok):
             from flask_ngrok import _run_ngrok
             cloudflare = _run_ngrok()
-        else:
+        elif(args.remote):
            from flask_cloudflared import _run_cloudflared
            cloudflare = _run_cloudflared(5000)
-        with open('cloudflare.log', 'w') as cloudflarelog:
-            cloudflarelog.write("KoboldAI has finished loading and is available at the following link : " + cloudflare)
-            print(format(colors.GREEN) + "KoboldAI has finished loading and is available at the following link : " + cloudflare + format(colors.END))
+        if(args.ngrok or args.remote):
+            with open('cloudflare.log', 'w') as cloudflarelog:
+                cloudflarelog.write("KoboldAI has finished loading and is available at the following link : " + cloudflare)
+                print(format(colors.GREEN) + "KoboldAI has finished loading and is available at the following link : " + cloudflare + format(colors.END))
+        else:
+            print("{0}Webserver has started, you can now connect to this machine at port 5000{1}".format(colors.GREEN, colors.END))
         vars.serverstarted = True
         socketio.run(app, host='0.0.0.0', port=5000)
     else:
@@ -4704,7 +5045,10 @@ if __name__ == "__main__":
         webbrowser.open_new('http://localhost:5000')
         print("{0}Server started!\nYou may now connect with a browser at http://127.0.0.1:5000/{1}".format(colors.GREEN, colors.END))
         vars.serverstarted = True
-        socketio.run(app, port=5000)
+        if args.unblock:
+            socketio.run(app, port=5000, host='0.0.0.0')
+        else:
+            socketio.run(app, port=5000)
 
 else:
     print("{0}\nServer started in WSGI mode!{1}".format(colors.GREEN, colors.END), flush=True)
