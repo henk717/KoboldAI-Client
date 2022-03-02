@@ -1,4 +1,4 @@
-git+https://github.com/huggingface/transformers
+transformers
 Flask
 Flask-SocketIO
 requests
@@ -9,5 +9,3 @@ eventlet
 lupa==1.10
 markdown
 bleach
-sentencepiece
-protobuf

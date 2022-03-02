@@ -21,6 +21,7 @@ SET TEMP=K:\
 SET TMP=K:\
 call K:\python\condabin\activate
 python aiserver.py %*
+subst K: /D
 cmd /k
 
 :drivemap_B
@@ -30,4 +31,5 @@ SET TEMP=B:\
 SET TMP=B:\
 call B:\python\condabin\activate
 python aiserver.py %*
+subst B: /D
 cmd /k

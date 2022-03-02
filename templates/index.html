@@ -123,7 +123,6 @@
 				<button type="button" class="btn btn-primary" id="btn_actmem">Memory</button>
 				<button type="button" class="btn btn-primary" id="btn_actwi">W Info</button>
 				<button type="button" class="btn btn-primary" id="btn_actundo">Back</button>
-				<button type="button" class="btn btn-primary" id="btn_actredo">Redo</button>
 				<button type="button" class="btn btn-primary" id="btn_actretry">Retry</button>
 			</div>
 			<input type="text" id="chatname" class="form-control hidden" placeholder="Chat name">
@@ -186,9 +185,6 @@
 					</div>
 				</div>
 			</div>
-			<div  class="hidden" id="debugcontainer">
-				<textarea class="form-control" placeholder="Debug Info" id="debuginfo"></textarea>
-			</div>
 		</div>
 	</div>
 	<div class="hidden" id="popupcontainer">
@@ -232,9 +228,7 @@
 				<div class="popuptitletext">Enter Name For Save</div>
 			</div>
 			<div class="aidgpopupcontent">
-				<input class="form-control" type="text" placeholder="Save Name" id="savename"><br>
-				<input type="checkbox" data-toggle="toggle" data-onstyle="success" id="savepins" checked>
-				<div class="box-label">Save Pin Information</div>
+				<input class="form-control" type="text" placeholder="Save Name" id="savename">
 			</div>
 			<div class="popuperror hidden">
 				<span></span>
