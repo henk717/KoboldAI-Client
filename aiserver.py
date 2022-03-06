@@ -69,70 +69,68 @@ class colors:
     UNDERLINE = '\033[4m'
 
 # AI models
-mainmenu = [
-    ["Load a model from its directory", "NeoCustom", ""],
-    ["Load an old GPT-2 model (eg CloverEdition)", "GPT2Custom", ""],
-    ["Skein 6B (Hybrid)", "KoboldAI/GPT-J-6B-Skein", "16GB"],
-    ["Janeway 6B (Novel)", "KoboldAI/GPT-J-6B-Janeway", "16GB"],
-    ["Adventure 6B", "KoboldAI/GPT-J-6B-Adventure", "16GB"],
-    ["Lit 6B (NSFW)", "hakurei/lit-6B", "16GB"],
-    ["Shinen 6B (NSFW)", "KoboldAI/GPT-J-6B-Shinen", "16GB"],
-    ["C1 6B (Chatbot)", "hakurei/c1-6B", "16GB"],
-    ["Janeway Neo 2.7B (Novel)", "KoboldAI/GPT-Neo-2.7B-Janeway", "8GB"],
-    ["Janeway FSD 2.7B (Novel)", "KoboldAI/fairseq-dense-2.7B-Janeway", "8GB"],
-    ["Adventure 2.7B", "KoboldAI/GPT-Neo-2.7B-AID", "8GB"],
-    ["Picard 2.7B (Novel)", "KoboldAI/GPT-Neo-2.7B-Picard", "8GB"],
-    ["Horni 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Horni", "8GB"],
-    ["Horni-LN 2.7B (Novel)", "KoboldAI/GPT-Neo-2.7B-Horni-LN", "8GB"],
-    ["Shinen 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Shinen", "8GB"],
-    ["Untuned GPT-Neo/J", "gptneolist", ""],
-    ["Untuned Fairseq Dense", "fsdlist", ""],
-    ["Untuned XGLM", "xglmlist", ""],
-    ["Untuned GPT2", "gpt2list", ""],
-    ["Online Services", "apilist", ""],
-    ["Read Only (No AI)", "ReadOnly", ""]
+#menu list should take the form of [Display Title, Model Name for code, VRAM requirement, True if this takes you to a menu, false if it's a model]
+model_menu = {'mainmenu': [
+        ["Load a model from its directory", "NeoCustom", "", False],
+        ["Load an old GPT-2 model (eg CloverEdition)", "GPT2Custom", "", False],
+        ["Skein 6B (Hybrid)", "KoboldAI/GPT-J-6B-Skein", "16GB", False],
+        ["Janeway 6B (Novel)", "KoboldAI/GPT-J-6B-Janeway", "16GB", False],
+        ["Adventure 6B", "KoboldAI/GPT-J-6B-Adventure", "16GB", False],
+        ["Lit 6B (NSFW)", "hakurei/lit-6B", "16GB", False],
+        ["Shinen 6B (NSFW)", "KoboldAI/GPT-J-6B-Shinen", "16GB", False],
+        ["C1 6B (Chatbot)", "hakurei/c1-6B", "16GB", False],
+        ["Janeway Neo 2.7B (Novel)", "KoboldAI/GPT-Neo-2.7B-Janeway", "8GB", False],
+        ["Janeway FSD 2.7B (Novel)", "KoboldAI/fairseq-dense-2.7B-Janeway", "8GB", False],
+        ["Adventure 2.7B", "KoboldAI/GPT-Neo-2.7B-AID", "8GB", False],
+        ["Picard 2.7B (Novel)", "KoboldAI/GPT-Neo-2.7B-Picard", "8GB", False],
+        ["Horni 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Horni", "8GB", False],
+        ["Horni-LN 2.7B (Novel)", "KoboldAI/GPT-Neo-2.7B-Horni-LN", "8GB", False],
+        ["Shinen 2.7B (NSFW)", "KoboldAI/GPT-Neo-2.7B-Shinen", "8GB", False],
+        ["Untuned GPT-Neo/J", "gptneolist", "", True],
+        ["Untuned Fairseq Dense", "fsdlist", "", True],
+        ["Untuned XGLM", "xglmlist", "", True],
+        ["Untuned GPT2", "gpt2list", "", True],
+        ["Online Services", "apilist", "", True],
+        ["Read Only (No AI)", "ReadOnly", "", True]
+    ],
+    'gptneolist': [
+        ["GPT-J 6B", "EleutherAI/gpt-j-6B", "16GB", False],
+        ["GPT-Neo 2.7B", "EleutherAI/gpt-neo-2.7B", "8GB", False],
+        ["GPT-Neo 1.3B", "EleutherAI/gpt-neo-1.3B", "6GB", False],
+        ["Return to Main Menu", "mainmenu", "", True],
+    ],
+    'gpt2list': [
+        ["GPT-2 XL", "gpt2-xl", "6GB", False],
+        ["GPT-2 Large", "gpt2-large", "4GB", False],
+        ["GPT-2 Med", "gpt2-medium", "2GB", False],
+        ["GPT-2", "gpt2", "2GB", False],
+        ["Return to Main Menu", "mainmenu", "", True],
+    ],
+    'fsdlist': [
+        ["Fairseq Dense 13B", "KoboldAI/fairseq-dense-13B", "32GB", False],
+        ["Fairseq Dense 6.7B", "KoboldAI/fairseq-dense-6.7B", "16GB", False],
+        ["Fairseq Dense 2.7B", "KoboldAI/fairseq-dense-2.7B", "8GB", False],
+        ["Fairseq Dense 1.3B", "KoboldAI/fairseq-dense-1.3B", "6GB", False],
+        ["Fairseq Dense 355M", "KoboldAI/fairseq-dense-355M", "", False],
+        ["Fairseq Dense 125M", "KoboldAI/fairseq-dense-125M", "", False],
+        ["Return to Main Menu", "Return", "", True],
+    ],
+    'xglmlist': [
+        ["XGLM 4.5B (Larger Dataset)", "facebook/xglm-4.5B", "", False],
+        ["XGLM 7.5B", "facebook/xglm-7.5B", "", False],
+        ["XGLM 2.9B", "facebook/xglm-2.9B", "", False],
+        ["XGLM 1.7B", "facebook/xglm-1.7B", "", False],
+        ["XGLM 564M", "facebook/xglm-564M", "", False],
+        ["Return to Main Menu", "mainmenu", "", True],
+    ],
+    'apilist': [
+        ["OpenAI API (requires API key)", "OAI", "", False],
+        ["InferKit API (requires API key)", "InferKit", "", False],
+        ["KoboldAI Server API (Old Google Colab)", "Colab", "", False],
+        ["Return to Main Menu", "mainmenu", "", True],
     ]
+    }
 
-gptneolist = [
-    ["GPT-J 6B", "EleutherAI/gpt-j-6B", "16GB"],
-    ["GPT-Neo 2.7B", "EleutherAI/gpt-neo-2.7B", "8GB"],
-    ["GPT-Neo 1.3B", "EleutherAI/gpt-neo-1.3B", "6GB"],
-    ["Return to Main Menu", "Return", ""],
-]
-
-gpt2list = [
-    ["GPT-2 XL", "gpt2-xl", "6GB"],
-    ["GPT-2 Large", "gpt2-large", "4GB"],
-    ["GPT-2 Med", "gpt2-medium", "2GB"],
-    ["GPT-2", "gpt2", "2GB"],
-    ["Return to Main Menu", "Return", ""],
-    ]
-
-fsdlist = [
-    ["Fairseq Dense 13B", "KoboldAI/fairseq-dense-13B", "32GB"],
-    ["Fairseq Dense 6.7B", "KoboldAI/fairseq-dense-6.7B", "16GB"],
-    ["Fairseq Dense 2.7B", "KoboldAI/fairseq-dense-2.7B", "8GB"],
-    ["Fairseq Dense 1.3B", "KoboldAI/fairseq-dense-1.3B", "6GB"],
-    ["Fairseq Dense 355M", "KoboldAI/fairseq-dense-355M", ""],
-    ["Fairseq Dense 125M", "KoboldAI/fairseq-dense-125M", ""],
-    ["Return to Main Menu", "Return", ""],
-    ]
-
-xglmlist = [
-    ["XGLM 4.5B (Larger Dataset)", "facebook/xglm-4.5B", ""],
-    ["XGLM 7.5B", "facebook/xglm-7.5B", ""],
-    ["XGLM 2.9B", "facebook/xglm-2.9B", ""],
-    ["XGLM 1.7B", "facebook/xglm-1.7B", ""],
-    ["XGLM 564M", "facebook/xglm-564M", ""],
-    ["Return to Main Menu", "Return", ""],
-    ]
-
-apilist = [
-    ["OpenAI API (requires API key)", "OAI", ""],
-    ["InferKit API (requires API key)", "InferKit", ""],
-    ["KoboldAI Server API (Old Google Colab)", "Colab", ""],
-    ["Return to Main Menu", "Return", ""],
-]
 # Variables
 class vars:
     lastact     = ""     # The last action received from the user
@@ -262,7 +260,11 @@ utils.vars = vars
 #==================================================================#
 # Function to get model selection at startup
 #==================================================================#
-def getModelSelection(modellist):
+def sendModelSelection(menu="mainmenu"):
+    emit('from_server', {'cmd': 'show_model_menu', 'data': model_menu[menu]}, broadcast=True)
+    
+
+def getModelSelection_old(modellist):
     print("    #    Model\t\t\t\t\t\tVRAM\n    ========================================================")
     i = 1
     for m in modellist:
@@ -298,6 +300,8 @@ def getModelSelection(modellist):
                 print("{0}Model select cancelled!{1}".format(colors.RED, colors.END))
                 print("{0}Select an AI model to continue:{1}\n".format(colors.CYAN, colors.END))
                 getModelSelection(mainmenu)
+    
+    
 
 #==================================================================#
 # Return all keys in tokenizer dictionary containing char
@@ -801,10 +805,12 @@ def general_startup():
 #==================================================================#
 # Load Model
 #==================================================================#
-def load_model():
+def load_model(use_gpu=True):
     global model
     global generator
-    
+    vars.noai = False
+    set_aibusy(True)
+    print("At start of load_model: ".format(vars.model))
     # If transformers model was selected & GPU available, ask to use CPU or GPU
     if(vars.model not in ["InferKit", "Colab", "OAI", "ReadOnly", "TPUMeshTransformerGPTJ"]):
         vars.allowsp = True
@@ -882,19 +888,14 @@ def load_model():
                 vars.usegpu = False
                 vars.breakmodel = True
             else:
-                print("    1 - GPU\n    2 - CPU\n")
+                #print("    1 - GPU\n    2 - CPU\n")
                 genselected = False
         else:
             genselected = False
 
         if(vars.hascuda):
             while(genselected == False):
-                genselect = input("Mode> ")
-                if(genselect == ""):
-                    vars.breakmodel = False
-                    vars.usegpu = True
-                    genselected = True
-                elif(genselect.isnumeric() and int(genselect) == 1):
+                if(use_gpu):
                     if(vars.bmsupported):
                         vars.breakmodel = True
                         vars.usegpu = False
@@ -903,12 +904,10 @@ def load_model():
                         vars.breakmodel = False
                         vars.usegpu = True
                         genselected = True
-                elif(genselect.isnumeric() and int(genselect) == 2):
+                else:
                     vars.breakmodel = False
                     vars.usegpu = False
                     genselected = True
-                else:
-                    print("{0}Please enter a valid selection.{1}".format(colors.RED, colors.END))
 
     # Ask for API key if InferKit was selected
     if(vars.model == "InferKit"):
@@ -1553,7 +1552,13 @@ def load_model():
             tokenizer = tpu_mtj_backend.tokenizer
         else:
             loadsettings()
-
+    
+    lua_startup()
+    # Load scripts
+    load_lua_scripts()
+    
+    final_startup()
+    set_aibusy(False)
 
 
 
@@ -2548,6 +2553,12 @@ def get_message(msg):
         load_lua_scripts()
         unloaded, loaded = getuslist()
         sendUSStatItems()
+    elif(msg['cmd'] == 'list_model'):
+        sendModelSelection(menu=msg['data'])
+    elif(msg['cmd'] == 'load_model'):
+        load_model(use_gpu=msg['data'])
+    elif(msg['cmd'] == 'selectmodel'):
+        vars.model = msg['data']
     elif(msg['cmd'] == 'loadselect'):
         vars.loadselect = msg["data"]
     elif(msg['cmd'] == 'spselect'):
@@ -3795,10 +3806,16 @@ def refresh_settings():
 def set_aibusy(state):
     if(state):
         vars.aibusy = True
-        emit('from_server', {'cmd': 'setgamestate', 'data': 'wait'}, broadcast=True)
+        try:
+            emit('from_server', {'cmd': 'setgamestate', 'data': 'wait'}, broadcast=True)
+        except:
+            pass
     else:
         vars.aibusy = False
-        emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True)
+        try:
+            emit('from_server', {'cmd': 'setgamestate', 'data': 'ready'}, broadcast=True)
+        except:
+            pass
 
 #==================================================================#
 # 
@@ -5179,14 +5196,10 @@ if __name__ == "__main__":
     print("{0}\nStarting webserver...{1}".format(colors.GREEN, colors.END), flush=True)
     
     general_startup()
-    show_select_model_list()
+    #show_select_model_list()
+    vars.model = "ReadOnly"
     load_model()
 
-    lua_startup()
-    # Load scripts
-    load_lua_scripts()
-    
-    final_startup()
 
     # Start Flask/SocketIO (Blocking, so this must be last method!)
     
