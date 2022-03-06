@@ -2894,13 +2894,10 @@ def actionredo():
     if restore_id in vars.actions_metadata:
         ok_to_use = False
         while not ok_to_use:
-            print(vars.actions_metadata[restore_id]['Alternative Text'])
             for item in vars.actions_metadata[restore_id]['Alternative Text']:
                 if item['Previous Selection'] and item['Text'] != "":
                     ok_to_use = True
-                    print("found good restore text")
             if not ok_to_use:
-                print("didn't find good restore text, moving to next step")
                 restore_id+=1
                 if restore_id not in vars.actions_metadata:
                     return
