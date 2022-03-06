@@ -91,7 +91,7 @@ model_menu = {'mainmenu': [
         ["Untuned XGLM", "xglmlist", "", True],
         ["Untuned GPT2", "gpt2list", "", True],
         ["Online Services", "apilist", "", True],
-        ["Read Only (No AI)", "ReadOnly", "", True]
+        ["Read Only (No AI)", "ReadOnly", "", False]
     ],
     'gptneolist': [
         ["GPT-J 6B", "EleutherAI/gpt-j-6B", "16GB", False],
