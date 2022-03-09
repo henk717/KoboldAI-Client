@@ -1,94 +1,100 @@
-from os import getcwd, listdir, path
+from os import listdir, path
 from typing import Tuple, Union, Optional
 import os
 import json
 import zipfile
 
-#==================================================================#
+
+# ==================================================================#
 #  Generic Method for prompting for file path
-#==================================================================#
-def getsavepath(dir, title, types):
+# ==================================================================#
+def getsavepath(directory, title, types):
     import tkinter as tk
     from tkinter import filedialog
     root = tk.Tk()
     root.attributes("-topmost", True)
-    path = tk.filedialog.asksaveasfile(
-        initialdir=dir, 
-        title=title, 
-        filetypes = types,
+    paths = tk.filedialog.asksaveasfile(
+        initialdir=directory,
+        title=title,
+        filetypes=types,
         defaultextension="*.*"
-        )
+    )
     root.destroy()
-    if(path != "" and path != None):
-        return path.name
+    if paths != "" and paths is not None:
+        return paths.name
     else:
         return None
 
-#==================================================================#
+
+# ==================================================================#
 #  Generic Method for prompting for file path
-#==================================================================#
-def getloadpath(dir, title, types):
+# ==================================================================#
+def getloadpath(directory, title, types):
     import tkinter as tk
     from tkinter import filedialog
     root = tk.Tk()
     root.attributes("-topmost", True)
-    path = tk.filedialog.askopenfilename(
-        initialdir=dir, 
-        title=title, 
-        filetypes = types
-        )
+    paths = tk.filedialog.askopenfilename(
+        initialdir=directory,
+        title=title,
+        filetypes=types
+    )
     root.destroy()
-    if(path != "" and path != None):
-        return path
+    if paths != "" and paths is not None:
+        return paths
     else:
         return None
 
-#==================================================================#
+
+# ==================================================================#
 #  Generic Method for prompting for directory path
-#==================================================================#
-def getdirpath(dir, title):
+# ==================================================================#
+def getdirpath(directory, title):
     import tkinter as tk
     from tkinter import filedialog
     root = tk.Tk()
     root.attributes("-topmost", True)
-    path = filedialog.askdirectory(
-        initialdir=dir, 
+    paths = filedialog.askdirectory(
+        initialdir=directory,
         title=title
-        )
+    )
     root.destroy()
-    if(path != "" and path != None):
-        return path
+    if paths != "" and paths is not None:
+        return paths
     else:
         return None
 
-#==================================================================#
+
+# ==================================================================#
 #  Returns the path (as a string) to the given story by its name
-#==================================================================#
+# ==================================================================#
 def storypath(name):
     return path.join(path.dirname(path.realpath(__file__)), "stories", name + ".json")
 
-#==================================================================#
+
+# ==================================================================#
 #  Returns the path (as a string) to the given soft prompt by its filename
-#==================================================================#
+# ==================================================================#
 def sppath(filename):
     return path.join(path.dirname(path.realpath(__file__)), "softprompts", filename)
 
-#==================================================================#
+
+# ==================================================================#
 #  Returns the path (as a string) to the given username by its filename
-#==================================================================#
+# ==================================================================#
 def uspath(filename):
     return path.join(path.dirname(path.realpath(__file__)), "userscripts", filename)
 
-#==================================================================#
+
+# ==================================================================#
 #  Returns an array of dicts containing story files in /stories
-#==================================================================#
+# ==================================================================#
 def getstoryfiles():
-    list = []
-    for file in listdir(path.dirname(path.realpath(__file__))+"/stories"):
+    lists = []
+    for file in listdir(path.dirname(path.realpath(__file__)) + "/stories"):
         if file.endswith(".json"):
-            ob = {}
-            ob["name"] = file.replace(".json", "")
-            f = open(path.dirname(path.realpath(__file__))+"/stories/"+file, "r")
+            ob = {"name": file.replace(".json", "")}
+            f = open(path.dirname(path.realpath(__file__)) + "/stories/" + file, "r")
             try:
                 js = json.load(f)
             except:
@@ -101,18 +107,22 @@ def getstoryfiles():
             except TypeError:
                 print(f"Browser loading error: {file} has incorrect format.")
                 continue
-            list.append(ob)
-    return list
+            lists.append(ob)
+    return lists
 
-#==================================================================#
+
+# ==================================================================#
 #  Checks if the given soft prompt file is valid
-#==================================================================#
-def checksp(filename: str, model_dimension: int) -> Tuple[Union[zipfile.ZipFile, int], Optional[Tuple[int, int]], Optional[Tuple[int, int]], Optional[bool], Optional['np.dtype']]:
+# ==================================================================#
+def checksp(filename: str, model_dimension: int) -> Tuple[
+    Union[zipfile.ZipFile, int], Optional[Tuple[int, int]], Optional[Tuple[int, int]], Optional[bool], Optional[
+        'np.dtype']]:
     global np
+    z = None
     if 'np' not in globals():
         import numpy as np
     try:
-        z = zipfile.ZipFile(path.dirname(path.realpath(__file__))+"/softprompts/"+filename)
+        z = zipfile.ZipFile(path.dirname(path.realpath(__file__)) + "/softprompts/" + filename)
         with z.open('tensor.npy') as f:
             # Read only the header of the npy file, for efficiency reasons
             version: Tuple[int, int] = np.lib.format.read_magic(f)
@@ -135,13 +145,14 @@ def checksp(filename: str, model_dimension: int) -> Tuple[Union[zipfile.ZipFile,
         return 4, version, shape, fortran_order, dtype
     return z, version, shape, fortran_order, dtype
 
-#==================================================================#
+
+# ==================================================================#
 #  Returns an array of dicts containing softprompt files in /softprompts
-#==================================================================#
+# ==================================================================#
 def getspfiles(model_dimension: int):
     lst = []
-    os.makedirs(path.dirname(path.realpath(__file__))+"/softprompts", exist_ok=True)
-    for file in listdir(path.dirname(path.realpath(__file__))+"/softprompts"):
+    os.makedirs(path.dirname(path.realpath(__file__)) + "/softprompts", exist_ok=True)
+    for file in listdir(path.dirname(path.realpath(__file__)) + "/softprompts"):
         if not file.endswith(".zip"):
             continue
         z, version, shape, fortran_order, dtype = checksp(file, model_dimension)
@@ -152,10 +163,12 @@ def getspfiles(model_dimension: int):
             print(f"Browser SP loading error: {file} tensor.npy has unsupported dtype '{dtype.name}'.")
             continue
         if z == 3:
-            print(f"Browser SP loading error: {file} tensor.npy has model dimension {shape[1]} which does not match your model's model dimension of {model_dimension}. This usually means this soft prompt is not compatible with your model.")
+            print(
+                f"Browser SP loading error: {file} tensor.npy has model dimension {shape[1]} which does not match your model's model dimension of {model_dimension}. This usually means this soft prompt is not compatible with your model.")
             continue
         if z == 4:
-            print(f"Browser SP loading error: {file} tensor.npy has {shape[0]} tokens but it is supposed to have less than 2048 tokens.")
+            print(
+                f"Browser SP loading error: {file} tensor.npy has {shape[0]} tokens but it is supposed to have less than 2048 tokens.")
             continue
         assert isinstance(z, zipfile.ZipFile)
         try:
@@ -169,16 +182,16 @@ def getspfiles(model_dimension: int):
         lst.append(ob)
     return lst
 
-#==================================================================#
+
+# ==================================================================#
 #  Returns an array of dicts containing userscript files in /userscripts
-#==================================================================#
+# ==================================================================#
 def getusfiles(long_desc=False):
     lst = []
-    os.makedirs(path.dirname(path.realpath(__file__))+"/userscripts", exist_ok=True)
-    for file in listdir(path.dirname(path.realpath(__file__))+"/userscripts"):
+    os.makedirs(path.dirname(path.realpath(__file__)) + "/userscripts", exist_ok=True)
+    for file in listdir(path.dirname(path.realpath(__file__)) + "/userscripts"):
         if file.endswith(".lua"):
-            ob = {}
-            ob["filename"] = file
+            ob = {"filename": file}
             description = []
             multiline = False
             with open(uspath(file)) as f:
@@ -217,24 +230,27 @@ def getusfiles(long_desc=False):
             lst.append(ob)
     return lst
 
-#==================================================================#
+
+# ==================================================================#
 #  Returns True if json file exists with requested save name
-#==================================================================#
+# ==================================================================#
 def saveexists(name):
     return path.exists(storypath(name))
 
-#==================================================================#
+
+# ==================================================================#
 #  Delete save file by name; returns None if successful, or the exception if not
-#==================================================================#
+# ==================================================================#
 def deletesave(name):
     try:
         os.remove(storypath(name))
     except Exception as e:
         return e
 
-#==================================================================#
+
+# ==================================================================#
 #  Rename save file; returns None if successful, or the exception if not
-#==================================================================#
+# ==================================================================#
 def renamesave(name, new_name):
     try:
         os.replace(storypath(name), storypath(new_name))

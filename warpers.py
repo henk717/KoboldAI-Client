@@ -1,4 +1,4 @@
-'''
+"""
 This file is AGPL-licensed.
 
 Some of the code in this file is from Clover Edition:
@@ -25,7 +25,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-'''
+"""
 
 import torch
 from transformers import LogitsWarper, LogitsProcessor
@@ -33,7 +33,7 @@ from transformers import LogitsWarper, LogitsProcessor
 
 class AdvancedRepetitionPenaltyLogitsProcessor(LogitsProcessor):
     def __init__(self, *args, **kwargs):
-        pass
+        super().__init__(*args, **kwargs)
 
     def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> torch.FloatTensor:
         self.penalty_range = int(self.penalty_range)
@@ -59,7 +59,8 @@ class AdvancedRepetitionPenaltyLogitsProcessor(LogitsProcessor):
 
 class TailFreeLogitsWarper(LogitsWarper):
 
-    def __init__(self, tfs: float, filter_value: float = -float("Inf"), min_tokens_to_keep: int = 1):
+    def __init__(self, tfs: float, filter_value: float = -float("Inf"), min_tokens_to_keep: int = 1, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         tfs = float(tfs)
         if tfs < 0 or tfs > 1.0:
             raise ValueError(f"`tfs` has to be a float > 0 and < 1, but is {tfs}")

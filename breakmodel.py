@@ -1,4 +1,4 @@
-'''
+"""
 This is a MODIFIED version of arrmansa's low VRAM patch.
 https://github.com/arrmansa/Basic-UI-for-GPT-J-6B-with-low-vram/blob/main/GPT-J-6B-Low-Vram-UI.ipynb
 The ORIGINAL version of the patch is released under the Apache License 2.0
@@ -9,7 +9,7 @@ Copyright 2018 The Hugging Face team
 
                                  Apache License
                            Version 2.0, January 2004
-                        http://www.apache.org/licenses/
+                        https://www.apache.org/licenses/
 
    TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
 
@@ -201,15 +201,14 @@ Copyright 2018 The Hugging Face team
    you may not use this file except in compliance with the License.
    You may obtain a copy of the License at
 
-       http://www.apache.org/licenses/LICENSE-2.0
+       https://www.apache.org/licenses/LICENSE-2.0
 
    Unless required by applicable law or agreed to in writing, software
    distributed under the License is distributed on an "AS IS" BASIS,
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
-'''
-
+"""
 
 import torch
 from torch import nn
@@ -225,8 +224,8 @@ from typing import Optional
 from transformers.modeling_outputs import BaseModelOutputWithPast, BaseModelOutputWithPastAndCrossAttentions
 
 from transformers.utils import logging
-logger = logging.get_logger(__name__)
 
+logger = logging.get_logger(__name__)
 
 breakmodel = True
 gpu_blocks = []
@@ -258,7 +257,7 @@ def move_hidden_layers(transformer, h=None):
 
     transformer.extrastorage = {}
     torch.cuda.empty_cache()
-    
+
     able_to_pin_layers = True
     for i in range(ram_blocks):
         h[i].to("cpu")
@@ -275,15 +274,18 @@ def move_hidden_layers(transformer, h=None):
                     param.data = param.data.pin_memory()
                 except:
                     able_to_pin_layers = False
-                    print(f"WARNING:  You only have enough shared GPU memory for {i} out of {ram_blocks} CPU layers.  Expect suboptimal speed.", file=sys.stderr)
+                    print(
+                        f"WARNING:  You only have enough shared GPU memory for {i} out of {ram_blocks} CPU layers.  Expect suboptimal speed.",
+                        file=sys.stderr)
             gc.collect()
             torch.cuda.empty_cache()
 
     if ram_blocks:
-        for param1,param2 in zip(h[0].parameters(),transformer.extrastorage[0].parameters()):
+        for param1, param2 in zip(h[0].parameters(), transformer.extrastorage[0].parameters()):
             param1.data = param2.data.to(primary_device, non_blocking=False).detach()
 
-        for param1,param2 in zip(h[ram_blocks-1].parameters(),transformer.extrastorage[ram_blocks-1].parameters()):
+        for param1, param2 in zip(h[ram_blocks - 1].parameters(),
+                                  transformer.extrastorage[ram_blocks - 1].parameters()):
             param1.data = param2.data.to(primary_device, non_blocking=False).detach()
 
     i = ram_blocks
@@ -294,25 +296,24 @@ def move_hidden_layers(transformer, h=None):
 
 
 def new_forward_neo(
-    self,
-    input_ids=None,
-    past_key_values=None,
-    attention_mask=None,
-    token_type_ids=None,
-    position_ids=None,
-    head_mask=None,
-    inputs_embeds=None,
-    use_cache=None,
-    output_attentions=None,
-    output_hidden_states=None,
-    return_dict=None,
-    embs=None,
+        self,
+        input_ids=None,
+        past_key_values=None,
+        attention_mask=None,
+        token_type_ids=None,
+        position_ids=None,
+        head_mask=None,
+        inputs_embeds=None,
+        use_cache=None,
+        output_attentions=None,
+        output_hidden_states=None,
+        return_dict=None,
+        embs=None,
 ):
     assert len(gpu_blocks) <= torch.cuda.device_count()
     assert sum(gpu_blocks) <= len(self.h)
     ram_blocks = len(self.h) - sum(gpu_blocks)
     cumulative_gpu_blocks = tuple(itertools.accumulate(gpu_blocks))
-
 
     output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
     output_hidden_states = (
@@ -381,13 +382,15 @@ def new_forward_neo(
             input_ids = input_ids.to(primary_device)
         inputs_embeds = self.wte(input_ids)
 
-    if embs is not None and not (use_cache is not None and use_cache and past_key_values is not None and len(past_key_values) > 0 and past_key_values[0] is not None):
+    if embs is not None and not (
+            use_cache is not None and use_cache and past_key_values is not None and len(past_key_values) > 0 and
+            past_key_values[0] is not None):
         offset = 0
         for pos, emb in embs:
             pos += offset
             if len(emb.shape) == 2:
                 emb = emb.repeat(input_shape[0], 1, 1)
-            inputs_embeds[:, pos:pos+emb.shape[1]] = emb
+            inputs_embeds[:, pos:pos + emb.shape[1]] = emb
             offset += emb.shape[1]
 
     if getattr(self, "wpe", None) is None:
@@ -419,12 +422,12 @@ def new_forward_neo(
 
         if breakmodel:
             if i in range(ram_blocks):
-                index1 = (i+1)%ram_blocks
-                for param1,param2 in zip(self.h[index1].parameters(),self.h[(i-1)%ram_blocks].parameters()):
+                index1 = (i + 1) % ram_blocks
+                for param1, param2 in zip(self.h[index1].parameters(), self.h[(i - 1) % ram_blocks].parameters()):
                     param1.data = param2.data
-                for param1,param2 in zip(self.h[index1].parameters(),self.extrastorage[index1].parameters()):
+                for param1, param2 in zip(self.h[index1].parameters(), self.extrastorage[index1].parameters()):
                     with torch.cuda.stream(copystream):
-                        torch.cuda.comm.broadcast(param2.data,out = [param1.data])
+                        torch.cuda.comm.broadcast(param2.data, out=[param1.data])
 
         if output_hidden_states:
             all_hidden_states = all_hidden_states + (hidden_states.cpu(),)
@@ -453,11 +456,15 @@ def new_forward_neo(
             )
         else:
             if breakmodel:
-                device = primary_device if i < ram_blocks else bisect.bisect_right(cumulative_gpu_blocks, i - ram_blocks)
+                device = primary_device if i < ram_blocks else bisect.bisect_right(cumulative_gpu_blocks,
+                                                                                   i - ram_blocks)
             outputs = block(
                 hidden_states.to(device) if breakmodel and hidden_states is not None else hidden_states,
-                layer_past=tuple(v.to(device) for v in layer_past if v is not None) if breakmodel and layer_past is not None and i >= ram_blocks and len(layer_past) and layer_past[0].device.index != device else layer_past,
-                attention_mask=attention_mask.to(device) if breakmodel and attention_mask is not None else attention_mask,
+                layer_past=tuple(v.to(device) for v in layer_past if
+                                 v is not None) if breakmodel and layer_past is not None and i >= ram_blocks and len(
+                    layer_past) and layer_past[0].device.index != device else layer_past,
+                attention_mask=attention_mask.to(
+                    device) if breakmodel and attention_mask is not None else attention_mask,
                 head_mask=head_mask[i].to(device) if breakmodel and head_mask[i] is not None else head_mask[i],
                 use_cache=use_cache,
                 output_attentions=output_attentions,
@@ -469,7 +476,6 @@ def new_forward_neo(
 
         if output_attentions:
             all_self_attentions = all_self_attentions + (outputs[2 if use_cache else 1],)
-
 
         if breakmodel:
             if i in range(ram_blocks):
@@ -501,25 +507,24 @@ def new_forward_neo(
 
 
 def new_forward_xglm(
-    self,
-    input_ids=None,
-    attention_mask=None,
-    encoder_hidden_states=None,
-    encoder_attention_mask=None,
-    head_mask=None,
-    cross_attn_head_mask=None,
-    past_key_values=None,
-    inputs_embeds=None,
-    use_cache=None,
-    output_attentions=None,
-    output_hidden_states=None,
-    return_dict=None,
+        self,
+        input_ids=None,
+        attention_mask=None,
+        encoder_hidden_states=None,
+        encoder_attention_mask=None,
+        head_mask=None,
+        cross_attn_head_mask=None,
+        past_key_values=None,
+        inputs_embeds=None,
+        use_cache=None,
+        output_attentions=None,
+        output_hidden_states=None,
+        return_dict=None,
 ):
     assert len(gpu_blocks) <= torch.cuda.device_count()
     assert sum(gpu_blocks) <= len(self.layers)
     ram_blocks = len(self.layers) - sum(gpu_blocks)
     cumulative_gpu_blocks = tuple(itertools.accumulate(gpu_blocks))
-
 
     output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
     output_hidden_states = (
@@ -586,12 +591,13 @@ def new_forward_xglm(
         i = idx
         if breakmodel:
             if i in range(ram_blocks):
-                index1 = (i+1)%ram_blocks
-                for param1,param2 in zip(self.layers[index1].parameters(),self.layers[(i-1)%ram_blocks].parameters()):
+                index1 = (i + 1) % ram_blocks
+                for param1, param2 in zip(self.layers[index1].parameters(),
+                                          self.layers[(i - 1) % ram_blocks].parameters()):
                     param1.data = param2.data
-                for param1,param2 in zip(self.layers[index1].parameters(),self.extrastorage[index1].parameters()):
+                for param1, param2 in zip(self.layers[index1].parameters(), self.extrastorage[index1].parameters()):
                     with torch.cuda.stream(copystream):
-                        torch.cuda.comm.broadcast(param2.data,out = [param1.data])
+                        torch.cuda.comm.broadcast(param2.data, out=[param1.data])
 
         # add LayerDrop (see https://arxiv.org/abs/1909.11556 for description)
         if output_hidden_states:
@@ -629,17 +635,24 @@ def new_forward_xglm(
             )
         else:
             if breakmodel:
-                device = primary_device if i < ram_blocks else bisect.bisect_right(cumulative_gpu_blocks, i - ram_blocks)
+                device = primary_device if i < ram_blocks else bisect.bisect_right(cumulative_gpu_blocks,
+                                                                                   i - ram_blocks)
             layer_outputs = decoder_layer(
                 hidden_states.to(device) if breakmodel and hidden_states is not None else hidden_states,
-                attention_mask=attention_mask.to(device) if breakmodel and attention_mask is not None else attention_mask,
+                attention_mask=attention_mask.to(
+                    device) if breakmodel and attention_mask is not None else attention_mask,
                 encoder_hidden_states=encoder_hidden_states.to(device) if encoder_hidden_states is not None else None,
-                encoder_attention_mask=encoder_attention_mask.to(device) if encoder_attention_mask is not None else None,
-                layer_head_mask=((head_mask[idx].to(device) if head_mask[idx] is not None else None) if head_mask is not None else None),
+                encoder_attention_mask=encoder_attention_mask.to(
+                    device) if encoder_attention_mask is not None else None,
+                layer_head_mask=((head_mask[idx].to(device) if head_mask[
+                                                                   idx] is not None else None) if head_mask is not None else None),
                 cross_attn_layer_head_mask=(
-                    (cross_attn_head_mask[idx].to(device) if cross_attn_head_mask[idx] is not None else None) if cross_attn_head_mask is not None else None
+                    (cross_attn_head_mask[idx].to(device) if cross_attn_head_mask[
+                                                                 idx] is not None else None) if cross_attn_head_mask is not None else None
                 ),
-                past_key_value=tuple(v.to(device) for v in past_key_value if v is not None) if breakmodel and past_key_value is not None and i >= ram_blocks and len(past_key_value) and past_key_value[0].device.index != device else past_key_value,
+                past_key_value=tuple(v.to(device) for v in past_key_value if
+                                     v is not None) if breakmodel and past_key_value is not None and i >= ram_blocks and len(
+                    past_key_value) and past_key_value[0].device.index != device else past_key_value,
                 output_attentions=output_attentions,
                 use_cache=use_cache,
             )
@@ -653,7 +666,7 @@ def new_forward_xglm(
 
             if encoder_hidden_states is not None:
                 all_cross_attentions += (layer_outputs[2],)
-        
+
         if breakmodel:
             if i in range(ram_blocks):
                 torch.cuda.synchronize()

@@ -3,21 +3,22 @@ from typing import Iterable, Tuple
 
 
 class KoboldStoryRegister(collections.OrderedDict):
-    '''
+    """
     Complexity-optimized class for keeping track of story chunks
-    '''
+    """
 
     def __init__(self, sequence: Iterable[Tuple[int, str]] = ()):
         super().__init__(sequence)
-        self.__next_id: int = len(sequence)
+        self.__next_id: int = sum(1 for _ in sequence)
 
     def append(self, v: str) -> None:
         self[self.__next_id] = v
         self.increment_id()
     
-    def pop(self) -> str:
+    def pop(self, **kwargs) -> str:
         return self.popitem()[1]
     
+    @property
     def get_first_key(self) -> int:
         if len(self) == 0:
             return -1
