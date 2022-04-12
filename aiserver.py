@@ -2690,7 +2690,7 @@ def sendUSStatItems():
 #==================================================================#
 def kml(txt):
    txt = txt.replace('\>', '&gt;')
-   txt = bleach.clean(markdown.markdown(txt), tags = ['p', 'em', 'strong', 'code', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'ul', 'b', 'i', 'a', 'span', 'button'], styles = ['color', 'font-weight'], attributes=['id', 'class', 'style', 'href'])
+   txt = bleach.clean(markdown.markdown(txt), tags = ['p', 'em', 'strong', 'code', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'ul', 'b', 'i', 'a', 'span', 'button'], css_sanitizer = ['color', 'font-weight'], attributes=['id', 'class', 'style', 'href'])
    return txt
 
 #==================================================================#
