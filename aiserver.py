@@ -3158,7 +3158,10 @@ def actionretry(data):
         if(not vars.aibusy):
             randomGameRequest(vars.recentrng, memory=vars.recentrngm)
         return
-    if actionback():
+    if(vars.recentback or actionback()):
+        vars.recentback = False
+        vars.recentedit = False
+        vars.lua_koboldbridge.feedback = None
         actionsubmit("", actionmode=vars.actionmode, force_submit=True)
         send_debug()
     elif(not vars.useprompt):
