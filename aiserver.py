@@ -319,6 +319,7 @@ class vars:
     colaburl    = ""     # Ngrok url for Google Colab mode
     apikey      = ""     # API key to use for InferKit API calls
     oaiapikey   = ""     # API key to use for OpenAI API calls
+    cluster_requested_models = []     # The models which we allow to generate during cluster mode
     savedir     = getcwd()+"\\stories"
     hascuda     = False  # Whether torch has detected CUDA on the system
     usegpu      = False  # Whether to launch pipeline with GPU support
@@ -1289,6 +1290,7 @@ def general_startup(override_args=None):
     parser.add_argument("--model", help="Specify the Model Type to skip the Menu")
     parser.add_argument("--path", help="Specify the Path for local models (For model NeoCustom or GPT2Custom)")
     parser.add_argument("--apikey", help="Specify the API key to use for online services")
+    parser.add_argument("--req_model", type=str, action='append', required=False, help="Which models which we allow to generate for us during cluster mode. Can be specified multiple times.")
     parser.add_argument("--revision", help="Specify the model revision for huggingface models (can be a git branch/tag name or a git commit hash)")
     parser.add_argument("--cpu", action='store_true', help="By default unattended launches are on the GPU use this option to force CPU usage.")
     parser.add_argument("--breakmodel", action='store_true', help=argparse.SUPPRESS)
@@ -1339,6 +1341,8 @@ def general_startup(override_args=None):
 
     if args.apikey:
         vars.apikey = args.apikey
+    if args.req_model:
+        vars.cluster_requested_models = args.req_model
 
     if args.colab:
         args.remote = True
@@ -3983,8 +3987,13 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 tokenizer_id = requests.get(
                     vars.colaburl[:-8] + "/api/v1/model",
                 ).json()["result"]
-            else: # For now
-                tokenizer_id = "KoboldAI/fairseq-dense-13B-Nerys-v2"
+            elif len(vars.cluster_requested_models) >= 1:
+                # If the player has requested one or more models, we use the first one for the tokenizer
+                tokenizer_id = vars.cluster_requested_models[0]
+            # The cluster can return any number of possible models for each gen, but this happens after this step
+            # So at this point, this is unknown
+            else:
+                tokenizer_id = ""
             if tokenizer_id != vars.api_tokenizer_id:
                 try:
                     if(os.path.isdir(tokenizer_id)):
@@ -5055,10 +5064,10 @@ def sendtocluster(txt, min, max):
         'prompt': txt,
         'params': reqdata,
         'username': vars.apikey,
+        'models': vars.cluster_requested_models,
     }
 
     # Create request
-    print("{0}{1}{2}".format(colors.RED, vars.colaburl[:-8] + "/generate/sync", colors.END))
     req = requests.post(
         vars.colaburl[:-8] + "/generate/sync",
         json=cluster_metadata,
@@ -5076,7 +5085,6 @@ def sendtocluster(txt, min, max):
         emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
         set_aibusy(0)
         return
-    print("{0}{1}{2}".format(colors.RED, json.dumps(js, indent=2), colors.END))
     genout = js
 
     for i in range(vars.numseqs):
