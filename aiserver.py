@@ -1288,6 +1288,7 @@ def general_startup(override_args=None):
     parser.add_argument("--aria2_port", type=int, help="Specify the port on which aria2's RPC interface will be open if aria2 is installed (defaults to 6799)")
     parser.add_argument("--model", help="Specify the Model Type to skip the Menu")
     parser.add_argument("--path", help="Specify the Path for local models (For model NeoCustom or GPT2Custom)")
+    parser.add_argument("--apikey", help="Specify the API key to use for online services")
     parser.add_argument("--revision", help="Specify the model revision for huggingface models (can be a git branch/tag name or a git commit hash)")
     parser.add_argument("--cpu", action='store_true', help="By default unattended launches are on the GPU use this option to force CPU usage.")
     parser.add_argument("--breakmodel", action='store_true', help=argparse.SUPPRESS)
@@ -1333,35 +1334,38 @@ def general_startup(override_args=None):
         old_emit = socketio.emit
         socketio.emit = new_emit
 
-    vars.model = args.model;
+    vars.model = args.model
     vars.revision = args.revision
 
+    if args.apikey:
+        vars.apikey = args.apikey
+
     if args.colab:
-        args.remote = True;
-        args.override_rename = True;
-        args.override_delete = True;
-        args.nobreakmodel = True;
-        args.quiet = True;
-        args.lowmem = True;
-        args.noaimenu = True;
+        args.remote = True
+        args.override_rename = True
+        args.override_delete = True
+        args.nobreakmodel = True
+        args.quiet = True
+        args.lowmem = True
+        args.noaimenu = True
 
     if args.quiet:
         vars.quiet = True
 
     if args.nobreakmodel:
-        vars.nobreakmodel = True;
+        vars.nobreakmodel = True
 
     if args.remote:
-        vars.host = True;
+        vars.host = True
 
     if args.ngrok:
-        vars.host = True;
+        vars.host = True
 
     if args.localtunnel:
-        vars.host = True;
+        vars.host = True
 
     if args.host:
-        vars.host = True;
+        vars.host = True
 
     if args.cpu:
         vars.use_colab_tpu = False
@@ -5050,7 +5054,7 @@ def sendtocluster(txt, min, max):
     cluster_metadata = {
         'prompt': txt,
         'params': reqdata,
-        'username': "kai_test",
+        'username': vars.apikey,
     }
 
     # Create request
