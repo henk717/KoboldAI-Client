@@ -1480,7 +1480,7 @@ def get_model_info(model, directory=""):
 
 
 def get_layer_count(model, directory=""):
-    if(model not in ["InferKit", "Colab", "API", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ"]):
+    if(model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ"]):
         if(model == "GPT2Custom"):
             with open(os.path.join(directory, "config.json"), "r") as f:
                 model_config = json.load(f)
@@ -2029,7 +2029,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
 
 
     # If transformers model was selected & GPU available, ask to use CPU or GPU
-    if(vars.model not in ["InferKit", "Colab", "API", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
+    if(vars.model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         vars.allowsp = True
         # Test for GPU support
 
@@ -2068,7 +2068,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             print("WARNING: No model type detected, assuming Neo (If this is a GPT2 model use the other menu option or --model GPT2Custom)")
             vars.model_type = "gpt_neo"
 
-    if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "API", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
+    if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         loadmodelsettings()
         loadsettings()
         print("{0}Looking for GPU support...{1}".format(colors.PURPLE, colors.END), end="")
@@ -2121,7 +2121,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         vars.noai = True
 
     # Start transformers and create pipeline
-    if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "API", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
+    if(not vars.use_colab_tpu and vars.model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         if(not vars.noai):
             print("{0}Initializing transformers, please wait...{1}".format(colors.PURPLE, colors.END))
             for m in ("GPTJModel", "XGLMModel"):
@@ -2577,7 +2577,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
             }
 
         # If we're running Colab or OAI, we still need a tokenizer.
-        if(vars.model in ("Colab", "API")):
+        if(vars.model in ("Colab", "API", "CLUSTER")):
             from transformers import GPT2TokenizerFast
             tokenizer = GPT2TokenizerFast.from_pretrained("EleutherAI/gpt-neo-2.7B", revision=vars.revision, cache_dir="cache")
             loadsettings()
@@ -3223,7 +3223,7 @@ def lua_set_chunk(k, v):
 def lua_get_modeltype():
     if(vars.noai):
         return "readonly"
-    if(vars.model in ("Colab", "API", "OAI", "InferKit")):
+    if(vars.model in ("Colab", "API", "CLUSTER", "OAI", "InferKit")):
         return "api"
     if(not vars.use_colab_tpu and vars.model not in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX") and (vars.model in ("GPT2Custom", "NeoCustom") or vars.model_type in ("gpt2", "gpt_neo", "gptj"))):
         hidden_size = get_hidden_size_from_model(model)
@@ -3252,7 +3252,7 @@ def lua_get_modeltype():
 def lua_get_modelbackend():
     if(vars.noai):
         return "readonly"
-    if(vars.model in ("Colab", "API", "OAI", "InferKit")):
+    if(vars.model in ("Colab", "API", "CLUSTER", "OAI", "InferKit")):
         return "api"
     if(vars.use_colab_tpu or vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
         return "mtj"
@@ -3973,11 +3973,14 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
     while(True):
         set_aibusy(1)
 
-        if(vars.model == "API"):
+        if(vars.model in ["API","CLUSTER"]):
             global tokenizer
-            tokenizer_id = requests.get(
-                vars.colaburl[:-8] + "/api/v1/model",
-            ).json()["result"]
+            if vars.model == "API":
+                tokenizer_id = requests.get(
+                    vars.colaburl[:-8] + "/api/v1/model",
+                ).json()["result"]
+            else: # For now
+                tokenizer_id = "KoboldAI/fairseq-dense-13B-Nerys-v2"
             if tokenizer_id != vars.api_tokenizer_id:
                 try:
                     if(os.path.isdir(tokenizer_id)):
@@ -4223,6 +4226,8 @@ def apiactionsubmit(data, use_memory=False, use_world_info=False, use_story=Fals
         raise NotImplementedError("API generation is not supported in old Colab API mode.")
     elif(vars.model == "API"):
         raise NotImplementedError("API generation is not supported in API mode.")
+    elif(vars.model == "CLUSTER"):
+        raise NotImplementedError("API generation is not supported in CLUSTER mode.")
     elif(vars.model == "OAI"):
         raise NotImplementedError("API generation is not supported in OpenAI/GooseAI mode.")
     elif(vars.model == "ReadOnly"):
@@ -4273,7 +4278,7 @@ def apiactionsubmit(data, use_memory=False, use_world_info=False, use_story=Fals
     minimum = len(tokens) + 1
     maximum = len(tokens) + vars.genamt
 
-    if(not vars.use_colab_tpu and vars.model not in ["Colab", "API", "OAI", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
+    if(not vars.use_colab_tpu and vars.model not in ["Colab", "API", "CLUSTER", "OAI", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         genout = apiactionsubmit_generate(tokens, minimum, maximum)
     elif(vars.use_colab_tpu or vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
         genout = apiactionsubmit_tpumtjgenerate(tokens, minimum, maximum)
@@ -4441,7 +4446,7 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
 
     if(actionlen == 0):
         # First/Prompt action
-        tokens = (tokenizer._koboldai_header if vars.model not in ("Colab", "API", "OAI") else []) + memtokens + witokens + anotetkns + prompttkns
+        tokens = (tokenizer._koboldai_header if vars.model not in ("Colab", "API", "CLUSTER", "OAI") else []) + memtokens + witokens + anotetkns + prompttkns
         assert len(tokens) <= vars.max_length - lnsp - vars.genamt - budget_deduction
         ln = len(tokens) + lnsp
         return tokens, ln+1, ln+vars.genamt
@@ -4489,12 +4494,12 @@ def calcsubmitbudget(actionlen, winfo, mem, anotetxt, actions, submission=None, 
         # Did we get to add the A.N.? If not, do it here
         if(anotetxt != ""):
             if((not anoteadded) or forceanote):
-                tokens = (tokenizer._koboldai_header if vars.model not in ("Colab", "API", "OAI") else []) + memtokens + witokens + anotetkns + prompttkns + tokens
+                tokens = (tokenizer._koboldai_header if vars.model not in ("Colab", "API", "CLUSTER", "OAI") else []) + memtokens + witokens + anotetkns + prompttkns + tokens
             else:
-                tokens = (tokenizer._koboldai_header if vars.model not in ("Colab", "API", "OAI") else []) + memtokens + witokens + prompttkns + tokens
+                tokens = (tokenizer._koboldai_header if vars.model not in ("Colab", "API", "CLUSTER", "OAI") else []) + memtokens + witokens + prompttkns + tokens
         else:
             # Prepend Memory, WI, and Prompt before action tokens
-            tokens = (tokenizer._koboldai_header if vars.model not in ("Colab", "API", "OAI") else []) + memtokens + witokens + prompttkns + tokens
+            tokens = (tokenizer._koboldai_header if vars.model not in ("Colab", "API", "CLUSTER", "OAI") else []) + memtokens + witokens + prompttkns + tokens
 
         # Send completed bundle to generator
         assert len(tokens) <= vars.max_length - lnsp - vars.genamt - budget_deduction
@@ -4516,14 +4521,14 @@ def calcsubmit(txt):
     if(vars.model != "InferKit"):
         subtxt, min, max = calcsubmitbudget(actionlen, winfo, mem, anotetxt, vars.actions, submission=txt)
         if(actionlen == 0):
-            if(not vars.use_colab_tpu and vars.model not in ["Colab", "API", "OAI", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
+            if(not vars.use_colab_tpu and vars.model not in ["Colab", "API", "CLUSTER", "OAI", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
                 generate(subtxt, min, max, found_entries=found_entries)
             elif(vars.model == "Colab"):
                 sendtocolab(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
             elif(vars.model == "API"):
                 sendtoapi(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
             elif(vars.model == "CLUSTER"):
-                sendtosluster(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
+                sendtocluster(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
             elif(vars.model == "OAI"):
                 oairequest(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
             elif(vars.use_colab_tpu or vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
@@ -5045,49 +5050,56 @@ def sendtocluster(txt, min, max):
     cluster_metadata = {
         'prompt': txt,
         'params': reqdata,
+        'username': "kai_test",
     }
 
     # Create request
-    while True:
-        req = requests.post(
-            vars.colaburl[:-8] + "/generate/sync",
-            json=reqdata,
-        )
-        js = req.json()
-        if(req.status_code != 200):
-            errmsg = "KoboldAI API Error: Failed to get a reply from the server. Please check the console."
-            print("{0}{1}{2}".format(colors.RED, json.dumps(js, indent=2), colors.END))
-            emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
-            set_aibusy(0)
-            return
+    print("{0}{1}{2}".format(colors.RED, vars.colaburl[:-8] + "/generate/sync", colors.END))
+    req = requests.post(
+        vars.colaburl[:-8] + "/generate/sync",
+        json=cluster_metadata,
+    )
+    js = req.json()
+    if(req.status_code == 503):
+        errmsg = "KoboldAI API Error: No available KoboldAI servers found in cluster to fulfil this request using the selected models and requested lengths."
         print("{0}{1}{2}".format(colors.RED, json.dumps(js, indent=2), colors.END))
-        genout = js
-
-        for i in range(vars.numseqs):
-            vars.lua_koboldbridge.outputs[i+1] = genout[i]
-
-        execute_outmod()
-        if(vars.lua_koboldbridge.regeneration_required):
-            vars.lua_koboldbridge.regeneration_required = False
-            genout = []
-            for i in range(vars.numseqs):
-                genout.append(vars.lua_koboldbridge.outputs[i+1])
-                assert type(genout[-1]) is str
-
-        if(len(genout) == 1):
-            genresult(genout[0])
-        else:
-            # Convert torch output format to transformers
-            seqs = []
-            for seq in genout:
-                seqs.append({"generated_text": seq})
-            if(vars.lua_koboldbridge.restart_sequence is not None and vars.lua_koboldbridge.restart_sequence > 0):
-                genresult(genout[vars.lua_koboldbridge.restart_sequence-1]["generated_text"])
-            else:
-                genselect(genout)
-
+        emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
         set_aibusy(0)
         return
+    if(req.status_code != 200):
+        errmsg = "KoboldAI API Error: Failed to get a reply from the server. Please check the console."
+        print("{0}{1}{2}".format(colors.RED, json.dumps(js, indent=2), colors.END))
+        emit('from_server', {'cmd': 'errmsg', 'data': errmsg}, broadcast=True)
+        set_aibusy(0)
+        return
+    print("{0}{1}{2}".format(colors.RED, json.dumps(js, indent=2), colors.END))
+    genout = js
+
+    for i in range(vars.numseqs):
+        vars.lua_koboldbridge.outputs[i+1] = genout[i]
+
+    execute_outmod()
+    if(vars.lua_koboldbridge.regeneration_required):
+        vars.lua_koboldbridge.regeneration_required = False
+        genout = []
+        for i in range(vars.numseqs):
+            genout.append(vars.lua_koboldbridge.outputs[i+1])
+            assert type(genout[-1]) is str
+
+    if(len(genout) == 1):
+        genresult(genout[0])
+    else:
+        # Convert torch output format to transformers
+        seqs = []
+        for seq in genout:
+            seqs.append({"generated_text": seq})
+        if(vars.lua_koboldbridge.restart_sequence is not None and vars.lua_koboldbridge.restart_sequence > 0):
+            genresult(genout[vars.lua_koboldbridge.restart_sequence-1]["generated_text"])
+        else:
+            genselect(genout)
+
+    set_aibusy(0)
+    return
 
 
 #==================================================================#
