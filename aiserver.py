@@ -1954,6 +1954,7 @@ def reset_model_settings():
     vars.revision    = None
 
 def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=False, online_model=""):
+
     global model
     global generator
     global torch
@@ -2026,7 +2027,6 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         else:
             args.configname = vars.model + "/" + online_model
         vars.oaiurl = vars.oaiengines + "/{0}/completions".format(online_model)
-
 
     # If transformers model was selected & GPU available, ask to use CPU or GPU
     if(vars.model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
@@ -4534,7 +4534,7 @@ def calcsubmit(txt):
             elif(vars.use_colab_tpu or vars.model in ("TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX")):
                 tpumtjgenerate(subtxt, min, max, found_entries=found_entries)
         else:
-            if(not vars.use_colab_tpu and vars.model not in ["Colab", "API", "OAI", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
+            if(not vars.use_colab_tpu and vars.model not in ["Colab", "API", "CLUSTER", "OAI", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
                 generate(subtxt, min, max, found_entries=found_entries)
             elif(vars.model == "Colab"):
                 sendtocolab(utils.decodenewlines(tokenizer.decode(subtxt)), min, max)
