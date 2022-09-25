@@ -1490,6 +1490,7 @@ def get_model_info(model, directory=""):
         key = True
         default_url = 'https://koboldai.net'
         multi_online_models = True
+        send_horde_models = True
         if path.exists(get_config_filename(model)):
             with open(get_config_filename(model), "r") as file:
                 # Check if API key exists
@@ -1501,8 +1502,6 @@ def get_model_info(model, directory=""):
                     key_value = js["oaiapikey"]
                 if 'url' in js and js['url'] != "":
                     url = js['url']
-            if key_value != "":
-                send_horde_models = True
     elif model in [x[1] for x in model_menu['apilist']]:
         if path.exists(get_config_filename(model)):
             with open(get_config_filename(model), "r") as file:
