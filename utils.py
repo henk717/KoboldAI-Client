@@ -150,6 +150,8 @@ def singlelineprocessing(txt, koboldai_vars):
 def chatmodeprocessing(txt, koboldai_vars):
     chatregex = re.compile(r'%s:[.|\n|\W|\w]*'%koboldai_vars.chatname)
     txt = chatregex.sub('', txt)
+    txt = koboldai_vars.regex_sl.sub('', txt)
+
     if(len(koboldai_vars.actions) > 0):
         if(len(koboldai_vars.actions[-1]) > 0):
             action = koboldai_vars.actions[-1]
@@ -161,8 +163,8 @@ def chatmodeprocessing(txt, koboldai_vars):
     else:
         action = koboldai_vars.prompt
         lastchar = action[-1] if len(action) else ""
-#    if(lastchar != "\n"):
-#        txt = txt + "\n"
+#	if(lastchar != "\n"):	
+#        txt = txt + "\n"	
     return txt
 
 #==================================================================#
