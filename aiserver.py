@@ -4851,7 +4851,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 botname = ""
             data = re.sub(r'\n+', ' ', data)
             if(len(data)):
-                data = f"\n{koboldai_vars.chatname}: {data}\n{botname}"
+                data = f"{koboldai_vars.chatname}: {data}\n{botname}"
         
         # If we're not continuing, store a copy of the raw input
         if(data != ""):
@@ -9488,7 +9488,7 @@ def UI_2_generate_wi(data):
     prompt = f"{yes_str}\n\n{extractor_string}"
     
     # logger.info(prompt)
-    # TODO: Make single_line mode that stops on newline rather than bans it (for title)
+    # TODO: Make single_line mode that stops on newline rather than bans it (for title) --> Update: created as SingleLineStopper(StoppingCriteria)
     out_text = tpool.execute(
         raw_generate,
         prompt,

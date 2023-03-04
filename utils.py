@@ -161,8 +161,8 @@ def chatmodeprocessing(txt, koboldai_vars):
     else:
         action = koboldai_vars.prompt
         lastchar = action[-1] if len(action) else ""
-    if(lastchar != "\n"):
-        txt = txt + "\n"
+#    if(lastchar != "\n"):
+#        txt = txt + "\n"
     return txt
 
 #==================================================================#
