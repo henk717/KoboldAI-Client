@@ -320,6 +320,7 @@ model_menu = {
         ["GooseAI API (requires API key)", "GooseAI", "None", False],
         ["OpenAI API (requires API key)", "OAI", "None", False],
         ["InferKit API (requires API key)", "InferKit", "None", False],
+        
         ["KoboldAI API", "API", "None", False],
         ["Basic Model API", "Colab", "", False],
         ["KoboldAI Horde", "CLUSTER", "None", False],
@@ -6498,7 +6499,8 @@ def applyoutputformatting(txt, no_sentence_trimming=False, no_single_line=False)
         txt = utils.singlelineprocessing(txt, koboldai_vars)
  	# Chat Mode Trimming
     if(koboldai_vars.chatmode):
-        txt = utils.chatmodeprocessing(txt, koboldai_vars)   
+        txt = utils.chatmodeprocessing(txt, koboldai_vars) 
+        txt = utils.singlelineprocessing(txt, koboldai_vars)   
     for sub in koboldai_vars.substitutions:
         if not sub["enabled"]:
             continue
