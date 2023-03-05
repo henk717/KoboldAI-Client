@@ -1263,6 +1263,7 @@ class system_settings(settings):
         self.disable_output_formatting = False
         self.full_determinism = False  # Whether or not full determinism is enabled
         self.seed_specified = False  # Whether or not the current RNG seed was specified by the user (in their settings file)
+        self.rng_states = {} # creates an empty dictionary to store the random number generator (RNG) states for a given seed, which is used to restore the RNG state later on
         self.seed        = None   # The current RNG seed (as an int), or None if unknown
         self.alt_gen = False # Use the calc_ai_text method for generating text to go to the AI
         self.theme_list = [".".join(f.split(".")[:-1]) for f in os.listdir("./themes") if os.path.isfile(os.path.join("./themes", f))]
