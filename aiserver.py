@@ -320,7 +320,6 @@ model_menu = {
         ["GooseAI API (requires API key)", "GooseAI", "None", False],
         ["OpenAI API (requires API key)", "OAI", "None", False],
         ["InferKit API (requires API key)", "InferKit", "None", False],
-        
         ["KoboldAI API", "API", "None", False],
         ["Basic Model API", "Colab", "", False],
         ["KoboldAI Horde", "CLUSTER", "None", False],
@@ -4851,7 +4850,7 @@ def actionsubmit(data, actionmode=0, force_submit=False, force_prompt_gen=False,
                 botname = ""
             data = re.sub(r'\n+', ' ', data)
             if(len(data)):
-                data = f"{koboldai_vars.chatname}: {data}\n{botname}"
+                data = f"\n{koboldai_vars.chatname}: {data}\n{botname}"
         
         # If we're not continuing, store a copy of the raw input
         if(data != ""):
@@ -6498,8 +6497,7 @@ def applyoutputformatting(txt, no_sentence_trimming=False, no_single_line=False)
         txt = utils.singlelineprocessing(txt, koboldai_vars)
  	# Chat Mode Trimming
     if(koboldai_vars.chatmode):
-        txt = utils.chatmodeprocessing(txt, koboldai_vars) 
-        txt = utils.singlelineprocessing(txt, koboldai_vars)   
+        txt = utils.chatmodeprocessing(txt, koboldai_vars)   
     for sub in koboldai_vars.substitutions:
         if not sub["enabled"]:
             continue
@@ -9489,7 +9487,7 @@ def UI_2_generate_wi(data):
     prompt = f"{yes_str}\n\n{extractor_string}"
     
     # logger.info(prompt)
-    # TODO: Make single_line mode that stops on newline rather than bans it (for title) --> Update: created as SingleLineStopper(StoppingCriteria)
+    # TODO: Make single_line mode that stops on newline rather than bans it (for title)
     out_text = tpool.execute(
         raw_generate,
         prompt,
