@@ -7857,29 +7857,12 @@ def newGameRequest():
     # Leave Edit/Memory mode before continuing
     exitModes()
     
-    # Clear vars values
-    koboldai_vars.gamestarted = False
-    koboldai_vars.prompt      = ""
-    koboldai_vars.memory      = ""
-    koboldai_vars.actions.reset()
-    koboldai_vars.actions_metadata = {}
-    
-    koboldai_vars.authornote  = ""
-    koboldai_vars.authornotetemplate = koboldai_vars.setauthornotetemplate
-    koboldai_vars.worldinfo   = []
-    koboldai_vars.worldinfo_i = []
-    koboldai_vars.worldinfo_u = {}
-    koboldai_vars.wifolders_d = {}
-    koboldai_vars.wifolders_l = []
-    koboldai_vars.lastact     = ""
-    koboldai_vars.submission  = ""
-    koboldai_vars.lastctx     = ""
-    
-    # Reset current save
-    koboldai_vars.savedir = getcwd()+"\\stories"
+    # Create new story settings
+    koboldai_vars.saveow   = False
+    koboldai_vars.svowname = ""
+    koboldai_vars.create_story("New Game")
     
     # Refresh game screen
-    koboldai_vars.laststory = None
     emit('from_server', {'cmd': 'setstoryname', 'data': koboldai_vars.laststory}, broadcast=True, room="UI_1")
     setgamesaved(True)
     sendwi()
