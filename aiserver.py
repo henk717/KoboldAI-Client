@@ -7149,19 +7149,20 @@ def saveas(data):
     if not data['pins']:
         koboldai_vars.actions.clear_all_options()
     # Check if filename exists already
-    save_name = koboldai_vars.story_name if koboldai_vars.story_name != "" else "untitled"
-    same_story = True
-    if os.path.exists("stories/{}".format(save_name)):
-        with open("stories/{}/story.json".format(save_name), "r") as settings_file:
+    same_story = False
+    if os.path.exists(koboldai_vars.save_paths.story):
+        with open(koboldai_vars.save_paths.story, "r") as settings_file:
             json_data = json.load(settings_file)
             if 'story_id' in json_data:
                 same_story = json_data['story_id'] == koboldai_vars.story_id
-            else:
-                same_story = False
-                
-    if same_story:
+    else:
+        same_story = True
+    
+    if same_story or koboldai_vars.saveow:
         # All clear to save
         koboldai_vars.save_story()
+        koboldai_vars.saveow   = False
+        koboldai_vars.svowname = ""
         emit('from_server', {'cmd': 'hidesaveas', 'data': ''}, room="UI_1")
     else:
         # File exists, prompt for overwrite
@@ -7194,39 +7195,32 @@ def renamesave(name, newname):
     name = utils.cleanfilename(name)
     newname = utils.cleanfilename(newname)
     
-    if os.path.exists("stories/{}/story.json".format(name)):
-        with open("stories/{}/story.json".format(name), "r") as f:
-            original_data = json.load(f)
+    if name == newname:
+        emit('from_server', {'cmd': 'hidepopuprename', 'data': ''}, room="UI_1")
+        return
+    
+    if os.path.exists("stories/{}".format(name)):
+            exists = os.path.exists("stories/{}".format(newname))
+            isfile = False
     elif os.path.exists("stories/{}.json".format(name)):
-        with open("stories/{}.json".format(name), "r") as f:
-            original_data = json.load(f)
+            exists = os.path.exists("stories/{}.json".format(newname))
+            isfile = True
     else:
         print("{0}{1}{2}".format(colors.RED, "File doesn't exist to rename", colors.END))
         emit('from_server', {'cmd': 'popuperror', 'data': "File doesn't exist to rename"}, room="UI_1")
         return
     
-    story_id = original_data['story_id'] if 'story_id' in original_data else None
-    
-    #Check if newname already exists:
-    same_story = True
-    if os.path.exists("stories/{}".format(newname)):
-        with open("stories/{}/story.json".format(newname), "r") as settings_file:
-            json_data = json.load(settings_file)
-            if 'story_id' in json_data:
-                same_story = json_data['story_id'] == koboldai_vars.story_id
-            else:
-                same_story = False
-
-    
-    
-    
-    if same_story or koboldai_vars.saveow:
-        if story_id is None:
-            os.remove("stories/{}.json".format(newname))
+    if not exists or koboldai_vars.saveow:
+        if isfile:
+            if exists: os.remove("stories/{}.json".format(newname))
             os.rename("stories/{}.json".format(name), "stories/{}.json".format(newname))
         else:
-            shutil.rmtree("stories/{}".format(newname))
+            if exists: shutil.rmtree("stories/{}".format(newname))
             os.rename("stories/{}".format(name), "stories/{}".format(newname))
+        if koboldai_vars.save_paths.base == os.path.join("stories", name):
+            koboldai_vars.save_paths.base = os.path.join("stories", newname)
+        koboldai_vars.saveow   = False
+        koboldai_vars.svowname = ""
         emit('from_server', {'cmd': 'hidepopuprename', 'data': ''}, room="UI_1")
         getloadlist()
     else:
@@ -7240,15 +7234,12 @@ def renamesave(name, newname):
 #==================================================================#
 def save():
     # Check if a file is currently open
-    save_name = koboldai_vars.story_name if koboldai_vars.story_name != "" else "untitled"
-    same_story = True
-    if os.path.exists("stories/{}".format(save_name)):
-        with open("stories/{}/story.json".format(save_name), "r", encoding="utf-8") as settings_file:
+    same_story = False
+    if os.path.exists(koboldai_vars.save_paths.story):
+        with open(koboldai_vars.save_paths.story, "r", encoding="utf-8") as settings_file:
             json_data = json.load(settings_file)
             if 'story_id' in json_data:
                 same_story = json_data['story_id'] == koboldai_vars.story_id
-            else:
-                same_story = False
     
     if same_story:
         koboldai_vars.save_story()
@@ -8496,15 +8487,12 @@ def UI_2_save_story(data):
         print("Saving Story")
     if data is None:
         #We need to check to see if there is a file already and if it's not the same story so we can ask the client if this is OK
-        save_name = koboldai_vars.story_name if koboldai_vars.story_name != "" else "untitled"
-        same_story = True
-        if os.path.exists("stories/{}".format(save_name)):
-            with open("stories/{}/story.json".format(save_name), "r") as settings_file:
+        same_story = False
+        if os.path.exists(koboldai_vars.save_paths.story):
+            with open(koboldai_vars.save_paths.story, "r") as settings_file:
                 json_data = json.load(settings_file)
                 if 'story_id' in json_data:
                     same_story = json_data['story_id'] == koboldai_vars.story_id
-                else:
-                    same_story = False
         
         if same_story:
             koboldai_vars.save_story()
