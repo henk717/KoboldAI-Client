@@ -8487,12 +8487,14 @@ def UI_2_save_story(data):
         print("Saving Story")
     if data is None:
         #We need to check to see if there is a file already and if it's not the same story so we can ask the client if this is OK
-        same_story = False
+        same_story = True
         if os.path.exists(koboldai_vars.save_paths.story):
             with open(koboldai_vars.save_paths.story, "r") as settings_file:
                 json_data = json.load(settings_file)
                 if 'story_id' in json_data:
                     same_story = json_data['story_id'] == koboldai_vars.story_id
+                else:
+                    same_story = False
         
         if same_story:
             koboldai_vars.save_story()
