@@ -6356,9 +6356,6 @@ def genresult(genout, flash=True, ignore_formatting=False):
 
     koboldai_vars.lua_koboldbridge.feedback = genout
 
-    if(len(genout) == 0):
-        return
-    
     # Add formatted text to Actions array and refresh the game screen
     if(len(koboldai_vars.prompt.strip()) == 0):
         koboldai_vars.prompt = genout
