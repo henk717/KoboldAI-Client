@@ -5142,7 +5142,7 @@ def actionback():
     if(koboldai_vars.aibusy):
         return
     # Remove last index of actions and refresh game screen
-    if(len(koboldai_vars.genseqs) == 0 and len(koboldai_vars.actions) > 0):
+    if(len(koboldai_vars.genseqs) == 0 and koboldai_vars.actions.action_count >= 0):
         last_key = koboldai_vars.actions.get_last_key()
         koboldai_vars.actions.pop()
         koboldai_vars.recentback = True
