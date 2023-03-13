@@ -7396,6 +7396,11 @@ def loadRequest(loadpath, filename=None):
     # Leave Edit/Memory mode before continuing
     exitModes()
     
+    # Create new story settings
+    koboldai_vars.saveow   = False
+    koboldai_vars.svowname = ""
+    koboldai_vars.create_story("New Game")
+    
     # Read file contents into JSON object
     start_time = time.time()
     if(isinstance(loadpath, str)):
