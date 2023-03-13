@@ -1796,7 +1796,22 @@ class KoboldStoryRegister(object):
             old_text = self.actions[action_id]["Selected Text"]
             old_length = self.actions[action_id]["Selected Text Length"]
             if keep:
-                self.actions[action_id]["Options"].append({"text": self.actions[action_id]["Selected Text"], "Pinned": False, "Previous Selection": True, "Edited": False})
+                keep_updated = False
+                if "Options" not in self.actions[action_id]:
+                    self.actions[action_id]["Options"] = []
+                for x in self.actions[action_id]["Options"]:
+                    if x["text"] == self.actions[action_id]["Selected Text"]:
+                        x["Previous Selection"] = True
+                        keep_updated = True
+                    else:
+                        x["Previous Selection"] = False
+                if not keep_updated:
+                    self.actions[action_id]["Options"].append({
+                        "text": self.actions[action_id]["Selected Text"],
+                        "Pinned": False,
+                        "Previous Selection": True,
+                        "Edited": False
+                    })
             self.actions[action_id]["Selected Text"] = ""
             if "wi_highlighted_text" in self.actions[action_id]:
                 del self.actions[action_id]["wi_highlighted_text"]
