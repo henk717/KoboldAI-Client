@@ -1007,6 +1007,8 @@ class story_settings(settings):
                                         wi["content"], 
                                         wi.get("comment", ""), 
                                         v1_uid=wi['uid'], sync=False)
+            elif wi["folder"] is not None:
+                new_world_info.add_folder(self.wifolders_d[str(wi['folder'])]['name'], sync=False)
         
         new_world_info._socketio = self._socketio
         self.worldinfo_v2 = new_world_info
@@ -2247,7 +2249,7 @@ class KoboldWorldInfo(object):
     def __len__(self):
         return len(self.world_info)
     
-    def add_folder(self, folder):
+    def add_folder(self, folder, sync=True):
         if folder in self.world_info_folder:
             i=0
             while "{} {}".format(folder, i) in self.world_info_folder:
@@ -2255,7 +2257,8 @@ class KoboldWorldInfo(object):
             folder = "{} {}".format(folder, i)
         self.world_info_folder[folder] = []
         self.story_settings.gamesaved = False
-        self.sync_world_info_to_old_format()
+        if sync:
+            self.sync_world_info_to_old_format()
         if self._socketio is not None:
             self._socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
         
