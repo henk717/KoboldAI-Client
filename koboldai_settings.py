@@ -1007,7 +1007,7 @@ class story_settings(settings):
                                         wi["content"], 
                                         wi.get("comment", ""), 
                                         v1_uid=wi['uid'], sync=False)
-            elif wi["folder"] is not None:
+            elif wi["folder"] is not None and self.wifolders_d[str(wi['folder'])]['name'] not in new_world_info.world_info_folder:
                 new_world_info.add_folder(self.wifolders_d[str(wi['folder'])]['name'], sync=False)
         
         new_world_info._socketio = self._socketio
