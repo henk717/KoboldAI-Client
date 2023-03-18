@@ -5178,8 +5178,10 @@ def actionredo():
 #==================================================================#
 def buildauthorsnote(authorsnote, template):
     # Build Author's Note if set
-    if authorsnote == "":
-        return ""
+    authorsnote = authorsnote.strip()
+    if "<|>" not in template:
+        return "\n" + authorsnote + "\n" if len(authorsnote) > 0 else ""
+    template = template.strip()
     return ("\n" + template + "\n").replace("<|>", authorsnote)
 
 def calcsubmitbudgetheader(txt, **kwargs):
