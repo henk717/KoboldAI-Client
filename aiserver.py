@@ -5068,10 +5068,8 @@ def apiactionsubmit(data, use_memory=False, use_world_info=False, use_story=Fals
     else:
         mem = koboldai_vars.memory
 
-    if(use_authors_note and koboldai_vars.authornote != ""):
-        anotetxt  = ("\n" + koboldai_vars.authornotetemplate + "\n").replace("<|>", koboldai_vars.authornote)
-    else:
-        anotetxt = ""
+    if(use_authors_note):
+        anotetxt = buildauthorsnote(koboldai_vars.authornote, koboldai_vars.authornotetemplate)
 
     MIN_STORY_TOKENS = 8
     story_tokens = []
