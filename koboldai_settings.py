@@ -396,7 +396,7 @@ class koboldai_vars(object):
         ######################################### Setup Author's Note Data ########################################################
         authors_note_text = self.authornotetemplate.replace("<|>", self.authornote) if "<|>" in self.authornotetemplate else self.authornote
         if len(authors_note_text) > 0 and authors_note_text[-1] not in [" ", "\n"]:
-            authors_note_text += "\n"
+            authors_note_text += " "
         authors_note_data = [[x, self.tokenizer.decode(x)] for x in self.tokenizer.encode(authors_note_text)]
         if used_tokens + len(authors_note_data) <= token_budget:
             used_tokens += len(authors_note_data)
