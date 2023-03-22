@@ -330,7 +330,7 @@ function fix_text(val) {
 
 function create_options(action) {
 	//Set all options before the next chunk to hidden
-	if (action.id  != current_action+1) {
+	if (action.id != current_action) {
 		return;
 	}
 	var option_chunk = document.getElementById("Select Options");
@@ -340,23 +340,20 @@ function create_options(action) {
 		option_chunk.removeChild(option_chunk.firstChild);
 	}
 	
-	//Let's check if we only have a single redo option. In that case we din't show as the user can use the redo button
-	seen_prev_selection = false;
-	show_options = false;
+	//check for redo options
+	has_pinned = false;
+	has_previous = false;
 	for (item of action.action.Options) {
-		if (!(item['Previous Selection'])) {
-			show_options = true;
-			break;
-		} else if (item['Previous Selection']) {
-			if (seen_prev_selection) {
-				show_options = true;
+		if (item['Previous Selection']) {
+			has_previous = true;
+		} else if (item['Pinned']) {
+			has_pinned = true;
+			if (has_previous) {
 				break;
-			} else {
-				seen_prev_selection = true;
 			}
 		}
 	}
-	if (!(show_options)) {
+	if (!(has_pinned && has_previous)) {
 		document.getElementById('main-grid').setAttribute('option_length', 0);
 		return;
 	}
@@ -365,49 +362,11 @@ function create_options(action) {
 	
 	var table = document.createElement("div");
 	table.classList.add("sequences");
-	//Add Redo options
-	let added_options=0;
+	
+	//Add Pinned options
 	i=0;
 	for (item of action.action.Options) {
-		if ((item['Previous Selection']) && (item.text != "")) {
-			var row = document.createElement("div");
-			row.classList.add("sequence_row");
-			var textcell = document.createElement("span");
-			textcell.textContent = item.text;
-			textcell.classList.add("sequence");
-			textcell.setAttribute("option_id", i);
-			textcell.setAttribute("option_chunk", action.id);
-			var iconcell = document.createElement("span");
-			iconcell.setAttribute("option_id", i);
-			iconcell.setAttribute("option_chunk", action.id);
-			iconcell.classList.add("sequnce_icon");
-			var icon = document.createElement("span");
-			icon.id = "Pin_"+i;
-			icon.classList.add("material-icons-outlined");
-			icon.classList.add("option_icon");
-			icon.classList.add("cursor");
-			icon.textContent = "cached";
-			iconcell.append(icon);
-			delete_icon = $e("span", iconcell, {"classes": ["material-icons-outlined", "cursor", 'option_icon'], 
-												"tooltip": "Delete Option", 'option_id': i,
-												'option_chunk': action.id, 'textContent': 'delete'});
-			delete_icon.onclick = function () {
-									socket.emit("delete_option", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
-							  };
-			textcell.onclick = function () {
-									socket.emit("Use Option Text", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
-							  };
-			row.append(textcell);
-			row.append(iconcell);
-			table.append(row);
-			added_options+=1;
-		}
-		i+=1;
-	}
-	//Add general options
-	i=0;
-	for (item of action.action.Options) {
-		if (!(item.Edited) && !(item['Previous Selection']) && (item.text != "")) {
+		if ((item['Pinned']) && !(item['Previous Selection'])) {
 			var row = document.createElement("div");
 			row.classList.add("sequence_row");
 			var textcell = document.createElement("span");
@@ -434,20 +393,50 @@ function create_options(action) {
 			iconcell.append(icon);
 			iconcell.onclick = function () {
 									socket.emit("Pinning", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
-							   };
+								};
 			textcell.onclick = function () {
 									socket.emit("Use Option Text", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
-							  };
+								};
 			row.append(textcell);
 			row.append(iconcell);
 			table.append(row);
-			added_options+=1;
 		}
 		i+=1;
 	}
-	if (added_options > 0) {
-		option_chunk.append(table);
+	
+	// Add Previous Selection
+	i=0;
+	for (item of action.action.Options) {
+		if ((item['Previous Selection'])) {
+			var row = document.createElement("div");
+			row.classList.add("sequence_row");
+			var textcell = document.createElement("span");
+			textcell.textContent = item.text;
+			textcell.classList.add("sequence");
+			textcell.setAttribute("option_id", i);
+			textcell.setAttribute("option_chunk", action.id);
+			var iconcell = document.createElement("span");
+			iconcell.setAttribute("option_id", i);
+			iconcell.setAttribute("option_chunk", action.id);
+			iconcell.classList.add("sequnce_icon");
+			var icon = document.createElement("span");
+			icon.id = "Pin_"+i;
+			icon.classList.add("material-icons-outlined");
+			icon.classList.add("option_icon");
+			icon.classList.add("cursor");
+			icon.textContent = "cached";
+			iconcell.append(icon);
+			textcell.onclick = function () {
+									socket.emit("Use Option Text", {"chunk": this.getAttribute("option_chunk"), "option": this.getAttribute("option_id")});
+								};
+			row.append(textcell);
+			row.append(iconcell);
+			table.append(row);
+		}
+		i+=1;
 	}
+	
+	option_chunk.append(table);
 	
 	
 	//make sure our last updated chunk is in view

@@ -1587,7 +1587,7 @@ class KoboldStoryRegister(object):
             if action_id_offset > 0:
                 if self.actions[action_id_offset-1]['Selected Text'][-1] == " " and text[0] == " ":
                     text = text[1:]
-        self.clear_unused_options(clear_probabilities=False)
+        self.clear_unused_options(pointer=self.action_count+1, clear_probabilities=False)
         self.action_count+=1
         action_id = self.action_count + action_id_offset
         if action_id in self.actions:
@@ -1782,11 +1782,11 @@ class KoboldStoryRegister(object):
                 ignore = self._koboldai_vars.calc_ai_text()
                 self.gen_audio(action_step)
     
-    def delete_option(self, option_number, action_step=None):
+    def delete_option(self, option_number, action_step=None, force=False):
         if action_step is None:
             action_step = self.action_count+1
         if action_step in self.actions:
-            if option_number < len(self.actions[action_step]['Options']):
+            if option_number < len(self.actions[action_step]['Options']) and (force or not self.actions[action_step]['Options'][option_number]['Previous Selection']):
                 del self.actions[action_step]['Options'][option_number]
                 process_variable_changes(self._socketio, "story", 'actions', {"id": action_step, 'action':  self.actions[action_step]}, None)
                 self.set_game_saved()
@@ -1797,18 +1797,44 @@ class KoboldStoryRegister(object):
             old_text = self.actions[action_id]["Selected Text"]
             old_length = self.actions[action_id]["Selected Text Length"]
             if keep:
-                self.actions[action_id]["Options"].append({"text": self.actions[action_id]["Selected Text"], "Pinned": False, "Previous Selection": True, "Edited": False})
+                keep_updated = False
+                for x in self.actions[action_id]["Options"]:
+                    if x["text"] == self.actions[action_id]["Selected Text"]:
+                        x["Previous Selection"] = True
+                        keep_updated = True
+                    else:
+                        x["Previous Selection"] = False
+                if not keep_updated:
+                    self.actions[action_id]["Options"].append({
+                        "text": self.actions[action_id]["Selected Text"],
+                        "Pinned": False,
+                        "Previous Selection": True,
+                        "Edited": False
+                    })
             self.actions[action_id]["Selected Text"] = ""
+            self.actions[action_id]['Selected Text Length'] = 0
             if "wi_highlighted_text" in self.actions[action_id]:
                 del self.actions[action_id]["wi_highlighted_text"]
-            self.actions[action_id]['Selected Text Length'] = 0
             if action_id == self.action_count:
                 self.action_count -= 1
-            process_variable_changes(self._socketio, "story", 'actions', {"id": action_id, 'action':  self.actions[action_id]}, None)
+                self._socketio.emit("var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":self.action_count, "transmit_time": str(datetime.datetime.now())}, broadcast=True, room="UI_2")
+            self.clear_unused_options(pointer=action_id)
             self.set_game_saved()
             logger.debug("Calcing AI Text from Action Delete")
             ignore = self._koboldai_vars.calc_ai_text()
-            
+    
+    def restore_action(self, action_id):
+        if action_id in self.actions:
+            options = [i for i, x in enumerate(self.actions[action_id]['Options']) if x['Pinned'] or x['Previous Selection']]
+            if len(options) == 1 and self.actions[action_id]['Options'][options[0]]['Previous Selection']:
+                self.use_option(option_number=options[0], action_step=action_id)
+            else:
+                if action_id-1 == self.action_count:
+                    self.action_count+=1
+                    self._socketio.emit("var_changed", {"classname": "actions", "name": "Action Count", "old_value": None, "value":self.action_count, "transmit_time": str(datetime.datetime.now())}, broadcast=True, room="UI_2")
+                self._socketio.emit("var_changed", {"classname": "story", "name": "actions", "old_value": None, "value":{"id": action_id, 'action':  self.actions[action_id]}, "transmit_time": str(datetime.datetime.now())}, broadcast=True, room="UI_2")
+                self.set_game_saved()
+    
     def pop(self, keep=True):
         if self.action_count >= 0:
             text = self.actions[self.action_count]['Selected Text']

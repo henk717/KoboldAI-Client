@@ -5147,11 +5147,11 @@ def actionback():
     if(koboldai_vars.aibusy):
         return
     # Remove last index of actions and refresh game screen
-    if(len(koboldai_vars.genseqs) == 0 and len(koboldai_vars.actions) > 0):
-        last_key = koboldai_vars.actions.get_last_key()
-        koboldai_vars.actions.pop()
+    if(len(koboldai_vars.genseqs) == 0 and koboldai_vars.actions.action_count >= 0):
+        action_id = koboldai_vars.actions.action_count
+        koboldai_vars.actions.delete_action(action_id)
         koboldai_vars.recentback = True
-        remove_story_chunk(last_key + 1)
+        remove_story_chunk(action_id + 1)
         success = True
     elif(len(koboldai_vars.genseqs) == 0):
         emit('from_server', {'cmd': 'errmsg', 'data': "Cannot delete the prompt."}, room="UI_1")
@@ -8661,8 +8661,8 @@ def UI_2_back(data):
         return
     if koboldai_vars.debug:
         print("back")
-    koboldai_vars.actions.clear_unused_options()
-    ignore = koboldai_vars.actions.pop()
+    action_id = koboldai_vars.actions.action_count
+    koboldai_vars.actions.delete_action(action_id)
     
 #==================================================================#
 # Event triggered when user clicks the redo button
@@ -8672,10 +8672,11 @@ def UI_2_back(data):
 def UI_2_redo(data):
     if koboldai_vars.aibusy:
         return
-    if len(koboldai_vars.actions.get_current_options()) == 1:
-        koboldai_vars.actions.use_option(0)
+    if koboldai_vars.debug:
+        print("redo")
+    action_id = koboldai_vars.actions.action_count+1
+    koboldai_vars.actions.restore_action(action_id)
     
-
 #==================================================================#
 # Event triggered when user clicks the retry button
 #==================================================================#
@@ -8685,8 +8686,8 @@ def UI_2_retry(data):
     if koboldai_vars.aibusy:
         return
     if len(koboldai_vars.actions.get_current_options_no_edits()) == 0:
-        ignore = koboldai_vars.actions.pop(keep=True)
-    koboldai_vars.actions.clear_unused_options()
+        action_id = koboldai_vars.actions.action_count
+        koboldai_vars.actions.delete_action(action_id)
     koboldai_vars.lua_koboldbridge.feedback = None
     koboldai_vars.recentrng = koboldai_vars.recentrngm = None
     actionsubmit("", actionmode=koboldai_vars.actionmode)
