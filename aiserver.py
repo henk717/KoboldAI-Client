@@ -8638,8 +8638,7 @@ def UI_2_submit(data):
 @socketio.on('abort')
 @logger.catch
 def UI_2_abort(data):
-    if koboldai_vars.debug:
-        print("got abort")
+    logger.debug("abort")
     koboldai_vars.abort = True
 
  
@@ -8649,6 +8648,7 @@ def UI_2_abort(data):
 @socketio.on('Pinning')
 @logger.catch
 def UI_2_Pinning(data):
+    logger.debug("pinning")
     koboldai_vars.actions.toggle_pin(int(data['chunk']), int(data['option']))
     
 #==================================================================#
@@ -8659,8 +8659,7 @@ def UI_2_Pinning(data):
 def UI_2_back(data):
     if koboldai_vars.aibusy:
         return
-    if koboldai_vars.debug:
-        print("back")
+    logger.debug("back")
     action_id = koboldai_vars.actions.action_count
     koboldai_vars.actions.delete_action(action_id)
     
@@ -8672,8 +8671,7 @@ def UI_2_back(data):
 def UI_2_redo(data):
     if koboldai_vars.aibusy:
         return
-    if koboldai_vars.debug:
-        print("redo")
+    logger.debug("redo")
     action_id = koboldai_vars.actions.action_count+1
     koboldai_vars.actions.restore_action(action_id)
     
@@ -8685,6 +8683,7 @@ def UI_2_redo(data):
 def UI_2_retry(data):
     if koboldai_vars.aibusy:
         return
+    logger.debug("retry")
     if len(koboldai_vars.actions.get_current_options_no_edits()) == 0:
         action_id = koboldai_vars.actions.action_count
         koboldai_vars.actions.delete_action(action_id)
