@@ -1475,7 +1475,7 @@ def general_startup(override_args=None):
     global enable_whitelist
     # Parsing Parameters
     parser = argparse.ArgumentParser(description="KoboldAI Server")
-    parser.add_argument("--whitelist", nargs="+", help="Enables IP whitelisting, use a comma separated list (--whitelist 127.0.0.1, 127.0.0.2, etc)")
+    parser.add_argument("--whitelist", type=str, help="Enables IP whitelisting, use a comma separated list (--whitelist 127.0.0.1,127.0.0.2,127.0.0.3,etc)")
     parser.add_argument("--remote", action='store_true', help="Optimizes KoboldAI for Remote Play")
     parser.add_argument("--noaimenu", action='store_true', help="Disables the ability to select the AI")
     parser.add_argument("--ngrok", action='store_true', help="Optimizes KoboldAI for Remote Play using Ngrok")
@@ -1528,15 +1528,10 @@ def general_startup(override_args=None):
     else:
         args = parser.parse_args()
     
-    if args.whitelist:
-        whitelist_str = ",".join(args.whitelist)
-        allowed_ips = filter(lambda ip: ip.strip(), re.split(', *| +', whitelist_str))
-        print("Allowed IPs:", list(allowed_ips))
-    else:
-        allowed_ips = []
-
     enable_whitelist = args.whitelist is not None
+    allowed_ips = set(args.whitelist.split(",")) if enable_whitelist else set()
     print("Enable_Whitelist:", enable_whitelist)
+    print("Allowed IPs:", list(allowed_ips))
 
     
     #load system and user settings
