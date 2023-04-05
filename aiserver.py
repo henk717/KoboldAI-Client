@@ -1529,7 +1529,7 @@ def general_startup(override_args=None):
     
     utils.args = args
     enable_whitelist = args.whitelist
-    print("Enable_Whitelist:", enable_whitelist)
+    print("Enable IP Whitelist:", enable_whitelist)
     
     #load system and user settings
     for setting in ['user_settings', 'system_settings']:
