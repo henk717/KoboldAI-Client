@@ -73,7 +73,6 @@ import torch
 from transformers import StoppingCriteria, GPT2Tokenizer, GPT2LMHeadModel, GPTNeoForCausalLM, GPTNeoModel, AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer, PreTrainedModel, modeling_utils, AutoModelForTokenClassification
 from transformers import __version__ as transformers_version
 import transformers
-from ip_whitelist import allowed_ips
 from functools import wraps
 try:
     from transformers.models.opt.modeling_opt import OPTDecoder
@@ -88,6 +87,8 @@ from PIL import Image
 from io import BytesIO
 
 global tpu_mtj_backend
+global allowed_ips
+allowed_ips = []
 enable_whitelist = False
 
 if lupa.LUA_VERSION[:2] != (5, 4):
@@ -1474,7 +1475,7 @@ def general_startup(override_args=None):
     global enable_whitelist
     # Parsing Parameters
     parser = argparse.ArgumentParser(description="KoboldAI Server")
-    parser.add_argument("--whitelist", action='store_true', default=False, help="enables IP whitelisting")
+    parser.add_argument("--whitelist", nargs="+", help="Enables IP whitelisting, use a comma separated list (--whitelist 127.0.0.1, 127.0.0.2, etc)")
     parser.add_argument("--remote", action='store_true', help="Optimizes KoboldAI for Remote Play")
     parser.add_argument("--noaimenu", action='store_true', help="Disables the ability to select the AI")
     parser.add_argument("--ngrok", action='store_true', help="Optimizes KoboldAI for Remote Play using Ngrok")
@@ -1527,9 +1528,16 @@ def general_startup(override_args=None):
     else:
         args = parser.parse_args()
     
-    utils.args = args
-    enable_whitelist = args.whitelist
-    print("Enable IP Whitelist:", enable_whitelist)
+    if args.whitelist:
+        whitelist_str = ",".join(args.whitelist)
+        allowed_ips = filter(lambda ip: ip.strip(), re.split(', *| +', whitelist_str))
+        print("Allowed IPs:", list(allowed_ips))
+    else:
+        allowed_ips = []
+
+    enable_whitelist = args.whitelist is not None
+    print("Enable_Whitelist:", enable_whitelist)
+
     
     #load system and user settings
     for setting in ['user_settings', 'system_settings']:
@@ -3460,6 +3468,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
 # Define a function to check if IP is allowed
 def is_allowed_ip():
     client_ip = request.remote_addr
+    #print("Connection attempt by:", client_ip)
     return client_ip in allowed_ips
 
 # Define a decorator to enforce IP whitelisting
@@ -3470,6 +3479,8 @@ def require_allowed_ip(func):
             return abort(403)
         return func(*args, **kwargs)
     return decorated
+
+
 
 # Set up Flask routes
 @app.route('/')
