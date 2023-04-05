@@ -74,6 +74,7 @@ from transformers import StoppingCriteria, GPT2Tokenizer, GPT2LMHeadModel, GPTNe
 from transformers import __version__ as transformers_version
 import transformers
 from ip_whitelist import allowed_ips
+from functools import wraps
 try:
     from transformers.models.opt.modeling_opt import OPTDecoder
 except:
