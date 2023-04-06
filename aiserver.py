@@ -1478,7 +1478,7 @@ def general_startup(override_args=None):
     global allowed_ips
     # Parsing Parameters
     parser = argparse.ArgumentParser(description="KoboldAI Server")
-    parser.add_argument("--whitelist", type=str, help="Enables IP whitelisting, uses a comma separated list supporting individual IPs, ranges, and subnets. (--whitelist 127.0.0.1,127.0.0.2,127.0.0.3,192.168.1.0-192.168.1.255,10.0.0.0/24,etc)")
+    parser.add_argument("--whitelist_ip", type=str, help="Enables IP whitelisting, uses a comma separated list supporting individual IPs, ranges, and subnets. (--whitelist 127.0.0.1,127.0.0.2,127.0.0.3,192.168.1.0-192.168.1.255,10.0.0.0/24,etc)")
     parser.add_argument("--remote", action='store_true', help="Optimizes KoboldAI for Remote Play")
     parser.add_argument("--noaimenu", action='store_true', help="Disables the ability to select the AI")
     parser.add_argument("--ngrok", action='store_true', help="Optimizes KoboldAI for Remote Play using Ngrok")
@@ -1534,10 +1534,10 @@ def general_startup(override_args=None):
     utils.args = args
 
 
-    enable_whitelist = args.whitelist is not None
+    enable_whitelist = args.whitelist_ip is not None
     allowed_ips = set()
     if enable_whitelist == True:
-        for ip_str in args.whitelist.split(","):
+        for ip_str in args.whitelist_ip.split(","):
             if "/" in ip_str:
                 allowed_ips |= set(str(ip) for ip in ipaddress.IPv4Network(ip_str, strict=False).hosts())
             elif "-" in ip_str:
