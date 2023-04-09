@@ -1,7 +1,7 @@
 ## Experimental Support for Intel ARC IPEX
 This fork adds experimental support for Intel ARC GPUs with IPEX
 
-Use play-oneapi.sh
+Install intel-compute-runtime-bin and intel-oneapi-basekit and then use play-oneapi.sh
 
 ## KoboldAI - Your gateway to GPT writing
 
