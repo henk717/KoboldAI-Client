@@ -17,6 +17,9 @@ __file__ = os.path.dirname(os.path.realpath(__file__))
 os.chdir(__file__)
 os.environ['EVENTLET_THREADPOOL_SIZE'] = '1'
 os.environ['TOKENIZERS_PARALLELISM'] = 'false'
+use_ipex = False
+if 'IPEX' in os.environ:
+    use_ipex = os.environ['IPEX']
 from eventlet import tpool
 
 import logging
@@ -1094,7 +1097,7 @@ def device_config(config):
     if(len(breakmodel.gpu_blocks) and breakmodel.gpu_blocks[-1] in (-1, utils.num_layers(config))):
         koboldai_vars.breakmodel = False
         koboldai_vars.usegpu = True
-        if args.ipex:
+        if use_ipex:
             koboldai_vars.gpu_device = "xpu"
         else:    
             koboldai_vars.gpu_device = len(breakmodel.gpu_blocks)-1
@@ -1113,7 +1116,7 @@ def move_model_to_devices(model):
 
     if(not utils.HAS_ACCELERATE and not koboldai_vars.breakmodel):
         if(koboldai_vars.usegpu):
-            if args.ipex:
+            if use_ipex:
                 model = model.to(memory_format=torch.channels_last)
                 model = model.half().to("xpu")
             else:
@@ -1618,9 +1621,9 @@ def general_startup(override_args=None):
         koboldai_vars.use_colab_tpu = False
 
     if args.ipex:
+        use_ipex = True
         os.environ['IPEX'] = str(1)
         import intel_extension_for_pytorch as ipex
-        #torch.cuda = torch.xpu
         torch.cuda.device_count = torch.xpu.device_count
         torch.cuda.get_device_name = torch.xpu.get_device_name
         torch.cuda.is_available = torch.xpu.is_available
@@ -1628,13 +1631,9 @@ def general_startup(override_args=None):
         torch.cuda.memory_reserved = torch.xpu.memory_reserved
         torch.cuda.synchronize = torch.xpu.synchronize
         torch.cuda.Stream = torch.xpu.Stream
-        torch.cuda.stream = torch.xpu.stream
-        
-        #torch.cuda.comm.broadcast = torch.nn.parallel.comm.broadcast
-        #torch.cuda.get_device_properties(0).total_memory = torch.xpu.get_device_properties(0).total_memory
-        #torch.cuda.get_device_properties(device).major = torch.xpu.get_device_properties(device).major
-        #torch.cuda.get_device_properties(device).minor = torch.xpu.get_device_properties(device).minor
+        torch.cuda.stream = torch.xpu.stream        
     else:
+        use_ipex = False
         os.environ['IPEX'] = str(0)
 
     koboldai_vars.smandelete = koboldai_vars.host == args.override_delete
@@ -2992,7 +2991,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                 elif device == "disk":
                                     accelerate.utils.offload_weight(model_dict[key], get_original_key(key), "accelerate-disk-cache", index=utils.offload_index)
                                     model_dict[key] = model_dict[key].to("meta")
-                                elif args.ipex:
+                                elif use_ipex:
                                     model_dict[key].to("xpu")
                                 else:
                                     model_dict[key] = model_dict[key].to(device)
@@ -5376,7 +5375,7 @@ def calcsubmit(txt):
                     if i > top_index:
                         bias += [1] * (i - top_index)
                     bias[i] = b["multiplier"]
-            if args.ipex:
+            if use_ipex:
                 attention_bias.attention_bias = torch.Tensor(bias).to("xpu")
             else:
                 device = get_auxilary_device()
@@ -5824,7 +5823,7 @@ def torch_raw_generate(
         gen_in = torch.tensor(prompt_tokens, dtype=torch.long)[None]
     else:
         gen_in = prompt_tokens
-    if args.ipex:
+    if use_ipex:
         gen_in = gen_in.to("xpu")
     else:
         device = get_auxilary_device()
@@ -6230,7 +6229,7 @@ def rwkv_init(model_class: str, use_gpu: bool = False):
 
     if use_gpu:
         logger.warning("[RWKV] Using GPU. This may not work out of the box and may require significant setup.")
-        if args.ipex:
+        if use_ipex:
             device = "xpu"
         else:
             device = "cuda"
@@ -9796,7 +9795,7 @@ def generate_image(prompt: str) -> Optional[Image.Image]:
         # If we don't have a GPU, use horde if we're allowed to
         return text2img_horde(prompt)
 
-    if args.ipex:
+    if use_ipex:
         memory = torch.xpu.get_device_properties(0).total_memory
     else:
         memory = torch.cuda.get_device_properties(0).total_memory
@@ -9821,12 +9820,12 @@ def text2img_local(prompt: str) -> Optional[Image.Image]:
     logger.debug("Generating Image")
     from diffusers import StableDiffusionPipeline
     if koboldai_vars.image_pipeline is None:
-        if args.ipex:
+        if use_ipex:
             pipe = tpool.execute(StableDiffusionPipeline.from_pretrained, "CompVis/stable-diffusion-v1-4", revision="fp16", torch_dtype=torch.float16, cache="functional_models/stable-diffusion").to("xpu")
         else:
             pipe = tpool.execute(StableDiffusionPipeline.from_pretrained, "CompVis/stable-diffusion-v1-4", revision="fp16", torch_dtype=torch.float16, cache="functional_models/stable-diffusion").to("cuda")
     else:
-        if args.ipex:
+        if use_ipex:
             pipe = koboldai_vars.image_pipeline.to("xpu")
         else:
             pipe = koboldai_vars.image_pipeline.to("cuda")
@@ -9835,7 +9834,7 @@ def text2img_local(prompt: str) -> Optional[Image.Image]:
     
     def get_image(pipe, prompt, num_inference_steps):
         from torch import autocast
-        if args.ipex:
+        if use_ipex:
             with autocast("xpu"):
                 return pipe(prompt, num_inference_steps=num_inference_steps).images[0]
         else:
@@ -10095,7 +10094,7 @@ def summarize(text, max_length=100, min_length=30, unload=True):
             koboldai_vars.summarizer.save_pretrained("functional_models/{}".format(args.summarizer_model.replace('/', '_')), max_shard_size="500MiB")
 
     #Try GPU accel
-    if args.ipex:
+    if use_ipex:
         if koboldai_vars.hascuda and torch.xpu.get_device_properties(0).total_memory - torch.xpu.memory_reserved(0) >= 1645778560:
             koboldai_vars.summarizer.to("xpu")
             device="xpu"
