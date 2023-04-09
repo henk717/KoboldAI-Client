@@ -1620,7 +1620,7 @@ def general_startup(override_args=None):
     if args.cpu:
         koboldai_vars.use_colab_tpu = False
 
-    if args.ipex:
+    if args.ipex or use_ipex:
         use_ipex = True
         os.environ['IPEX'] = str(1)
         import intel_extension_for_pytorch as ipex
