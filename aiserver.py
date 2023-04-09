@@ -10097,8 +10097,8 @@ def summarize(text, max_length=100, min_length=30, unload=True):
     #Try GPU accel
     if args.ipex:
         if koboldai_vars.hascuda and torch.xpu.get_device_properties(0).total_memory - torch.xpu.memory_reserved(0) >= 1645778560:
-            koboldai_vars.summarizer.to(0)
-            device=0
+            koboldai_vars.summarizer.to("xpu")
+            device="xpu"
     elif koboldai_vars.hascuda and torch.cuda.get_device_properties(0).total_memory - torch.cuda.memory_reserved(0) >= 1645778560:
         koboldai_vars.summarizer.to(0)
         device=0
