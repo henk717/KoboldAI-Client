@@ -210,13 +210,18 @@ Copyright 2018, 2022 The Hugging Face team
    limitations under the License.
 '''
 
-
+import os
 import torch
 from torch import nn
-import torch.cuda.comm
+use_ipex = False
+if 'IPEX' in os.environ:
+    use_ipex = os.environ['IPEX'] 
+if use_ipex:
+    import torch.nn.parallel.comm
+else:
+    import torch.cuda.comm
 import copy
 import gc
-import os
 import sys
 import itertools
 import bisect
@@ -233,7 +238,10 @@ logger = logging.get_logger(__name__)
 breakmodel = True
 gpu_blocks = []
 disk_blocks = 0
-primary_device = 0 if torch.cuda.device_count() > 0 else "cpu"
+if use_ipex:
+    primary_device = 0
+else:
+    primary_device = 0 if torch.cuda.device_count() > 0 else "cpu"
 
 
 if utils.HAS_ACCELERATE:
@@ -279,7 +287,10 @@ def dispatch_model_ex(
             called directly during the forward, for instance if a `dense` linear layer is registered, but at forward,
             `dense.weight` and `dense.bias` are used in some operations instead of calling `dense` directly.
     """
-    if main_device != "cpu":
+    if use_ipex:
+        return dispatch_model(model, device_map, main_device, state_dict, offload_dir=offload_dir, offload_buffers=offload_buffers, **kwargs)
+
+    elif main_device != "cpu":
         return dispatch_model(model, device_map, main_device, state_dict, offload_dir=offload_dir, offload_buffers=offload_buffers, **kwargs)
 
     # Error early if the device map is incomplete.
@@ -288,7 +299,10 @@ def dispatch_model_ex(
     offload_devices = ["cpu", "disk"] if main_device != "cpu" else ["disk"]
 
     if main_device is None:
-        main_device = [d for d in device_map.values() if d not in offload_devices][0]
+        if use_ipex:
+            main_device = "0"
+        else:
+            main_device = [d for d in device_map.values() if d not in offload_devices][0]
 
     cpu_modules = [name for name, device in device_map.items() if device == "cpu"] if main_device != "cpu" else []
     if state_dict is None and len(cpu_modules) > 0:
@@ -305,11 +319,14 @@ def dispatch_model_ex(
     ):
         disk_state_dict = extract_submodules_state_dict(model.state_dict(), disk_modules)
         offload_state_dict(offload_dir, disk_state_dict)
-
-    execution_device = {
-        name: main_device if device in offload_devices else device for name, device in device_map.items()
-    }
-    offload = {name: device in offload_devices for name, device in device_map.items()}
+    if use_ipex:
+        execution_device = "0"
+        offload = "xpu"
+    else:
+        execution_device = {
+            name: main_device if device in offload_devices else device for name, device in device_map.items()
+        }
+        offload = {name: device in offload_devices for name, device in device_map.items()}
     save_folder = offload_dir if len(disk_modules) > 0 else None
     if state_dict is not None or save_folder is not None:
         weights_map = OffloadedWeightsLoader(state_dict=state_dict, save_folder=save_folder)
@@ -518,8 +535,13 @@ def new_forward_neo(
                 for param1,param2 in zip(self.h[index1].parameters(),self.h[(i-1)%ram_blocks].parameters()):
                     param1.data = param2.data
                 for param1,param2 in zip(self.h[index1].parameters(),self.extrastorage[index1].parameters()):
-                    with torch.cuda.stream(copystream):
-                        torch.cuda.comm.broadcast(param2.data,out = [param1.data])
+                    
+                    if use_ipex:
+                        with torch.xpu.stream(copystream):
+                            torch.nn.parallel.comm.broadcast(param2.data,out = [param1.data])
+                    else:
+                        with torch.cuda.stream(copystream):
+                            torch.cuda.comm.broadcast(param2.data,out = [param1.data])
 
         if output_hidden_states:
             all_hidden_states = all_hidden_states + (hidden_states.cpu(),)
@@ -685,8 +707,12 @@ def new_forward_xglm(
                 for param1,param2 in zip(self.layers[index1].parameters(),self.layers[(i-1)%ram_blocks].parameters()):
                     param1.data = param2.data
                 for param1,param2 in zip(self.layers[index1].parameters(),self.extrastorage[index1].parameters()):
-                    with torch.cuda.stream(copystream):
-                        torch.cuda.comm.broadcast(param2.data,out = [param1.data])
+                    if use_ipex:
+                        with torch.xpu.stream(copystream):
+                            torch.nn.parallel.comm.broadcast(param2.data,out = [param1.data])
+                    else:
+                        with torch.cuda.stream(copystream):
+                            torch.cuda.comm.broadcast(param2.data,out = [param1.data])
 
         # add LayerDrop (see https://arxiv.org/abs/1909.11556 for description)
         if output_hidden_states:
@@ -873,8 +899,12 @@ def new_forward_opt(
                 for param1,param2 in zip(self.layers[index1].parameters(),self.layers[(i-1)%ram_blocks].parameters()):
                     param1.data = param2.data
                 for param1,param2 in zip(self.layers[index1].parameters(),self.extrastorage[index1].parameters()):
-                    with torch.cuda.stream(copystream):
-                        torch.cuda.comm.broadcast(param2.data,out = [param1.data])
+                    if use_ipex:
+                        with torch.xpu.stream(copystream):
+                            torch.nn.parallel.comm.broadcast(param2.data,out = [param1.data])
+                    else:
+                        with torch.cuda.stream(copystream):
+                            torch.cuda.comm.broadcast(param2.data,out = [param1.data])
 
         # add LayerDrop (see https://arxiv.org/abs/1909.11556 for description)
         if output_hidden_states:

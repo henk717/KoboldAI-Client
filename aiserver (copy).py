@@ -973,13 +973,20 @@ def get_hidden_size_from_model(model):
 # Breakmodel configuration functions
 #==================================================================#
 def device_list(n_layers, primary=None, selected=None):
-    device_count = torch.cuda.device_count()
+    if args.ipex:
+        device_count = torch.xpu.device_count()
+    else:
+        device_count = torch.cuda.device_count()
     if(device_count < 2):
         primary = None
     gpu_blocks = breakmodel.gpu_blocks + (device_count - len(breakmodel.gpu_blocks))*[0]
     print(f"{colors.YELLOW}       DEVICE ID  |  LAYERS  |  DEVICE NAME{colors.END}")
     for i in range(device_count):
-        name = torch.cuda.get_device_name(i)
+        if args.ipex:
+            name = torch.xpu.get_device_name(i)
+        else:
+            name = torch.cuda.get_device_name(i)
+
         if(len(name) > 47):
             name = "..." + name[-44:]
         row_color = colors.END
@@ -1004,7 +1011,11 @@ def device_config(config):
                 breakmodel.gpu_blocks = []
             else:
                 breakmodel.gpu_blocks = list(map(int, args.breakmodel_gpulayers.split(',')))
-            assert len(breakmodel.gpu_blocks) <= torch.cuda.device_count()
+            
+            if args.ipex:
+                assert len(breakmodel.gpu_blocks) <= torch.xpu.device_count()
+            else:
+                assert len(breakmodel.gpu_blocks) <= torch.cuda.device_count()
             s = n_layers
             for i in range(len(breakmodel.gpu_blocks)):
                 if(breakmodel.gpu_blocks[i] <= -1):
@@ -1030,7 +1041,10 @@ def device_config(config):
         breakmodel.gpu_blocks = [n_layers]
         n_layers = 0
     else:
-        device_count = torch.cuda.device_count()
+        if args.ipex:
+            device_count = torch.xpu.device_count()
+        else:
+            device_count = torch.cuda.device_count()
         if(device_count > 1):
             print(colors.CYAN + "\nPlease select one of your GPUs to be your primary GPU.")
             print("VRAM usage in your primary GPU will be higher than for your other ones.")
@@ -1094,10 +1108,7 @@ def device_config(config):
     if(len(breakmodel.gpu_blocks) and breakmodel.gpu_blocks[-1] in (-1, utils.num_layers(config))):
         koboldai_vars.breakmodel = False
         koboldai_vars.usegpu = True
-        if args.ipex:
-            koboldai_vars.gpu_device = "xpu"
-        else:    
-            koboldai_vars.gpu_device = len(breakmodel.gpu_blocks)-1
+        koboldai_vars.gpu_device = len(breakmodel.gpu_blocks)-1
         return
 
     if(not breakmodel.gpu_blocks):
@@ -1113,11 +1124,7 @@ def move_model_to_devices(model):
 
     if(not utils.HAS_ACCELERATE and not koboldai_vars.breakmodel):
         if(koboldai_vars.usegpu):
-            if args.ipex:
-                model = model.to(memory_format=torch.channels_last)
-                model = model.half().to("xpu")
-            else:
-                model = model.half().to(koboldai_vars.gpu_device)
+            model = model.half().to(koboldai_vars.gpu_device)
         else:
             model = model.to('cpu').float()
         generator = model.generate
@@ -1618,24 +1625,7 @@ def general_startup(override_args=None):
         koboldai_vars.use_colab_tpu = False
 
     if args.ipex:
-        os.environ['IPEX'] = str(1)
         import intel_extension_for_pytorch as ipex
-        #torch.cuda = torch.xpu
-        torch.cuda.device_count = torch.xpu.device_count
-        torch.cuda.get_device_name = torch.xpu.get_device_name
-        torch.cuda.is_available = torch.xpu.is_available
-        torch.cuda.empty_cache = torch.xpu.empty_cache
-        torch.cuda.memory_reserved = torch.xpu.memory_reserved
-        torch.cuda.synchronize = torch.xpu.synchronize
-        torch.cuda.Stream = torch.xpu.Stream
-        torch.cuda.stream = torch.xpu.stream
-        
-        #torch.cuda.comm.broadcast = torch.nn.parallel.comm.broadcast
-        #torch.cuda.get_device_properties(0).total_memory = torch.xpu.get_device_properties(0).total_memory
-        #torch.cuda.get_device_properties(device).major = torch.xpu.get_device_properties(device).major
-        #torch.cuda.get_device_properties(device).minor = torch.xpu.get_device_properties(device).minor
-    else:
-        os.environ['IPEX'] = str(0)
 
     koboldai_vars.smandelete = koboldai_vars.host == args.override_delete
     koboldai_vars.smanrename = koboldai_vars.host == args.override_rename
@@ -1705,12 +1695,18 @@ def get_model_info(model, directory=""):
     models_on_url = False
     multi_online_models = False
     show_online_model_select=False
-    gpu_count = torch.cuda.device_count()
+    if args.ipex:
+        gpu_count = torch.xpu.device_count()
+    else:
+        gpu_count = torch.cuda.device_count()
     gpu_names = []
     send_horde_models = False
     show_custom_model_box = False
     for i in range(gpu_count):
-        gpu_names.append(torch.cuda.get_device_name(i))
+        if args.ipex:
+            gpu_names.append(torch.xpu.get_device_name(i))
+        else:
+            gpu_names.append(torch.cuda.get_device_name(i))
     if model in ['Colab', 'API']:
         url = True
     elif model == 'CLUSTER':
@@ -1749,6 +1745,9 @@ def get_model_info(model, directory=""):
         pass
     #elif model == 'customhuggingface':
     #    show_custom_model_box = True
+
+    elif args.ipex and not utils.HAS_ACCELERATE and not torch.xpu.is_available():
+        pass
     elif not utils.HAS_ACCELERATE and not torch.cuda.is_available():
         pass
     elif args.cpu:
@@ -2649,7 +2648,10 @@ def unload_model():
     gc.collect()
     try:
         with torch.no_grad():
-            torch.cuda.empty_cache()
+            if args.ipex:
+                torch.xpu.empty_cache()
+            else:
+                torch.cuda.empty_cache()
     except:
         pass
         
@@ -2784,7 +2786,10 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         loadmodelsettings()
         loadsettings()
         logger.init("GPU support", status="Searching")
-        koboldai_vars.hascuda = torch.cuda.is_available() and not args.cpu
+        if args.ipex:
+            koboldai_vars.hascuda = torch.xpu.is_available() and not args.cpu
+        else:
+            koboldai_vars.hascuda = torch.cuda.is_available() and not args.cpu
         koboldai_vars.bmsupported = ((utils.HAS_ACCELERATE and koboldai_vars.model_type != 'gpt2') or koboldai_vars.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not koboldai_vars.nobreakmodel
         if(args.breakmodel is not None and args.breakmodel):
             logger.warning("--breakmodel is no longer supported. Breakmodel mode is now automatically enabled when --breakmodel_gpulayers is used (see --help for details).")
@@ -2992,11 +2997,8 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                                 elif device == "disk":
                                     accelerate.utils.offload_weight(model_dict[key], get_original_key(key), "accelerate-disk-cache", index=utils.offload_index)
                                     model_dict[key] = model_dict[key].to("meta")
-                                elif args.ipex:
-                                    model_dict[key].to("xpu")
                                 else:
                                     model_dict[key] = model_dict[key].to(device)
-
                                 #print("OK", flush=True)
                                 current_offset += nbytes
                                 utils.bar.update(1)
@@ -3229,6 +3231,9 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                         move_model_to_devices(model)
                         koboldai_vars.modeldim = get_hidden_size_from_model(model)
                         generator = model.generate
+                    elif args.ipex:
+                        model = model.to(memory_format=torch.channels_last)
+                        model = model.to("xpu")                    
                     else:
                         model = model.to('cpu').float()
                         koboldai_vars.modeldim = get_hidden_size_from_model(model)
@@ -3237,6 +3242,9 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                     move_model_to_devices(model)
                     koboldai_vars.modeldim = get_hidden_size_from_model(model)
                     generator = model.generate
+                elif args.ipex:
+                    model = model.to(memory_format=torch.channels_last)
+                    model = model.to("xpu")
                 else:
                     model.to('cpu').float()
                     koboldai_vars.modeldim = get_hidden_size_from_model(model)
@@ -5029,7 +5037,10 @@ def apiactionsubmit_generate(txt, minimum, maximum):
     # Clear CUDA cache if using GPU
     if(koboldai_vars.hascuda and (koboldai_vars.usegpu or koboldai_vars.breakmodel)):
         gc.collect()
-        torch.cuda.empty_cache()
+        if args.ipex:
+            torch.xpu.empty_cache()
+        else:
+            torch.cuda.empty_cache()
 
     # Submit input text to generator
     _genout, already_generated = tpool.execute(core_generate, txt, minimum, maximum, set())
@@ -5040,7 +5051,10 @@ def apiactionsubmit_generate(txt, minimum, maximum):
     if(koboldai_vars.hascuda and (koboldai_vars.usegpu or koboldai_vars.breakmodel)):
         del _genout
         gc.collect()
-        torch.cuda.empty_cache()
+        if args.ipex:
+            torch.xpu.empty_cache()
+        else:
+            torch.cuda.empty_cache()
 
     return genout
 
@@ -5376,11 +5390,9 @@ def calcsubmit(txt):
                     if i > top_index:
                         bias += [1] * (i - top_index)
                     bias[i] = b["multiplier"]
-            if args.ipex:
-                attention_bias.attention_bias = torch.Tensor(bias).to("xpu")
-            else:
-                device = get_auxilary_device()
-                attention_bias.attention_bias = torch.Tensor(bias).to(device)
+
+            device = get_auxilary_device()
+            attention_bias.attention_bias = torch.Tensor(bias).to(device)
             logger.info(f"Bias by {koboldai_vars.memory_attn_bias} -- {attention_bias.attention_bias}")
         logger.debug("Submit: experimental_features time {}s".format(time.time()-start_time))
         
@@ -5824,11 +5836,9 @@ def torch_raw_generate(
         gen_in = torch.tensor(prompt_tokens, dtype=torch.long)[None]
     else:
         gen_in = prompt_tokens
-    if args.ipex:
-        gen_in = gen_in.to("xpu")
-    else:
-        device = get_auxilary_device()
-        gen_in = gen_in.to(device)
+
+    device = get_auxilary_device()
+    gen_in = gen_in.to(device)
 
     additional_bad_words_ids = [tokenizer.encode("\n")] if single_line else []
 
@@ -6329,7 +6339,10 @@ def generate(txt, minimum, maximum, found_entries=None):
     # Clear CUDA cache if using GPU
     if(koboldai_vars.hascuda and (koboldai_vars.usegpu or koboldai_vars.breakmodel)):
         gc.collect()
-        torch.cuda.empty_cache()
+        if args.ipex:
+            torch.xpu.empty_cache()
+        else:
+            torch.cuda.empty_cache()
 
     # Submit input text to generator
     try:
@@ -6380,7 +6393,10 @@ def generate(txt, minimum, maximum, found_entries=None):
     if(koboldai_vars.hascuda and (koboldai_vars.usegpu or koboldai_vars.breakmodel)):
         del genout
         gc.collect()
-        torch.cuda.empty_cache()
+        if args.ipex:
+            torch.xpu.empty_cache()
+        else:
+            torch.cuda.empty_cache()
     
     maybe_review_story()
 
@@ -9802,7 +9818,10 @@ def generate_image(prompt: str) -> Optional[Image.Image]:
         memory = torch.cuda.get_device_properties(0).total_memory
 
     # We aren't being forced to use horde, so now let's figure out if we should use local
-    if memory - torch.cuda.memory_reserved(0) >= 6000000000:
+    if args.ipex and memory - torch.xpu.memory_reserved(0) >= 6000000000:
+        # We have enough vram, just do it locally
+        return text2img_local(prompt)
+    elif memory - torch.cuda.memory_reserved(0) >= 6000000000:
         # We have enough vram, just do it locally
         return text2img_local(prompt)
     elif memory > 6000000000 and koboldai_vars.img_gen_priority <= 1:
@@ -9821,10 +9840,7 @@ def text2img_local(prompt: str) -> Optional[Image.Image]:
     logger.debug("Generating Image")
     from diffusers import StableDiffusionPipeline
     if koboldai_vars.image_pipeline is None:
-        if args.ipex:
-            pipe = tpool.execute(StableDiffusionPipeline.from_pretrained, "CompVis/stable-diffusion-v1-4", revision="fp16", torch_dtype=torch.float16, cache="functional_models/stable-diffusion").to("xpu")
-        else:
-            pipe = tpool.execute(StableDiffusionPipeline.from_pretrained, "CompVis/stable-diffusion-v1-4", revision="fp16", torch_dtype=torch.float16, cache="functional_models/stable-diffusion").to("cuda")
+        pipe = tpool.execute(StableDiffusionPipeline.from_pretrained, "CompVis/stable-diffusion-v1-4", revision="fp16", torch_dtype=torch.float16, cache="functional_models/stable-diffusion").to("cuda")
     else:
         if args.ipex:
             pipe = koboldai_vars.image_pipeline.to("xpu")
@@ -9851,7 +9867,10 @@ def text2img_local(prompt: str) -> Optional[Image.Image]:
     else:
         koboldai_vars.image_pipeline = None
         del pipe
-    torch.cuda.empty_cache()
+    if args.ipex:
+        torch.xpu.empty_cache()
+    else:
+        torch.cuda.empty_cache()
     logger.debug("time to unload: {}".format(time.time() - start_time))
     return image
 
@@ -10095,11 +10114,10 @@ def summarize(text, max_length=100, min_length=30, unload=True):
             koboldai_vars.summarizer.save_pretrained("functional_models/{}".format(args.summarizer_model.replace('/', '_')), max_shard_size="500MiB")
 
     #Try GPU accel
-    if args.ipex:
-        if koboldai_vars.hascuda and torch.xpu.get_device_properties(0).total_memory - torch.xpu.memory_reserved(0) >= 1645778560:
-            koboldai_vars.summarizer.to(0)
-            device=0
-    elif koboldai_vars.hascuda and torch.cuda.get_device_properties(0).total_memory - torch.cuda.memory_reserved(0) >= 1645778560:
+    if koboldai_vars.hascuda and torch.cuda.get_device_properties(0).total_memory - torch.cuda.memory_reserved(0) >= 1645778560:
+        koboldai_vars.summarizer.to(0)
+        device=0
+    elif args.ipex and koboldai_vars.hascuda and torch.xpu.get_device_properties(0).total_memory - torch.xpu.memory_reserved(0) >= 1645778560:
         koboldai_vars.summarizer.to(0)
         device=0
     else:
@@ -10115,11 +10133,18 @@ def summarize(text, max_length=100, min_length=30, unload=True):
     output = tpool.execute(summarizer, text, max_length=max_length, min_length=min_length, do_sample=False)[0]['summary_text']
     logger.debug("Time to summarize: {}".format(time.time()-start_time))
     #move model back to CPU to save precious vram
-    torch.cuda.empty_cache()
-    logger.debug("VRAM used by summarization: {}".format(torch.cuda.memory_reserved(0)))
+    if args.ipex:
+        torch.xpu.empty_cache()
+        logger.debug("VRAM used by summarization: {}".format(torch.xpu.memory_reserved(0)))
+    else:    
+        torch.cuda.empty_cache()
+        logger.debug("VRAM used by summarization: {}".format(torch.cuda.memory_reserved(0)))
     if unload:
         koboldai_vars.summarizer.to("cpu")
-    torch.cuda.empty_cache()
+    if args.ipex:
+        torch.xpu.empty_cache()
+    else:
+        torch.cuda.empty_cache()
     
     #logger.debug("Original Text: {}".format(text))
     #logger.debug("Summarized Text: {}".format(output))
