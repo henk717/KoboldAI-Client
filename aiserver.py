@@ -1034,7 +1034,9 @@ def device_config(config):
         n_layers = 0
     else:
         device_count = torch.cuda.device_count()
-        if(device_count > 1):
+        if use_ipex:
+            breakmodel.primary_device = "xpu"
+        elif(device_count > 1):
             print(colors.CYAN + "\nPlease select one of your GPUs to be your primary GPU.")
             print("VRAM usage in your primary GPU will be higher than for your other ones.")
             print("It is recommended you make your fastest GPU your primary GPU.")
@@ -1118,9 +1120,7 @@ def move_model_to_devices(model):
         if(koboldai_vars.usegpu):
             if use_ipex:
                 model = model.to(memory_format=torch.channels_last)
-                model = model.half().to("xpu")
-            else:
-                model = model.half().to(koboldai_vars.gpu_device)
+            model = model.half().to(koboldai_vars.gpu_device)
         else:
             model = model.to('cpu').float()
         generator = model.generate
@@ -1149,7 +1149,8 @@ def move_model_to_devices(model):
         gc.collect()
         generator = model.generate
         return
-
+    if use_ipex:
+        model = model.to(memory_format=torch.channels_last)
     model.half()
     gc.collect()
 

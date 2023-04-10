@@ -239,7 +239,7 @@ breakmodel = True
 gpu_blocks = []
 disk_blocks = 0
 if use_ipex:
-    primary_device = 0
+    primary_device = "xpu"
 else:
     primary_device = 0 if torch.cuda.device_count() > 0 else "cpu"
 
@@ -288,8 +288,7 @@ def dispatch_model_ex(
             `dense.weight` and `dense.bias` are used in some operations instead of calling `dense` directly.
     """
     if use_ipex:
-        return dispatch_model(model, device_map, main_device, state_dict, offload_dir=offload_dir, offload_buffers=offload_buffers, **kwargs)
-
+        pass
     elif main_device != "cpu":
         return dispatch_model(model, device_map, main_device, state_dict, offload_dir=offload_dir, offload_buffers=offload_buffers, **kwargs)
 
@@ -300,7 +299,7 @@ def dispatch_model_ex(
 
     if main_device is None:
         if use_ipex:
-            main_device = "0"
+            main_device = "xpu"
         else:
             main_device = [d for d in device_map.values() if d not in offload_devices][0]
 
@@ -320,13 +319,12 @@ def dispatch_model_ex(
         disk_state_dict = extract_submodules_state_dict(model.state_dict(), disk_modules)
         offload_state_dict(offload_dir, disk_state_dict)
     if use_ipex:
-        execution_device = "0"
-        offload = "xpu"
+        execution_device = "xpu"
     else:
         execution_device = {
             name: main_device if device in offload_devices else device for name, device in device_map.items()
         }
-        offload = {name: device in offload_devices for name, device in device_map.items()}
+    offload = {name: device in offload_devices for name, device in device_map.items()}
     save_folder = offload_dir if len(disk_modules) > 0 else None
     if state_dict is not None or save_folder is not None:
         weights_map = OffloadedWeightsLoader(state_dict=state_dict, save_folder=save_folder)
