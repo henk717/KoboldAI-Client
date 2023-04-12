@@ -1155,8 +1155,7 @@ def move_model_to_devices(model):
         gc.collect()
         generator = model.generate
         return
-    if use_ipex:
-        model = model.to(memory_format=torch.channels_last)
+
     model.half()
     gc.collect()
 
