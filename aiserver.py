@@ -1124,9 +1124,7 @@ def move_model_to_devices(model):
     if(not utils.HAS_ACCELERATE and not koboldai_vars.breakmodel):
         if(koboldai_vars.usegpu):
             if use_ipex:
-                model = model.half()
-                model = model.to(memory_format=torch.channels_last)
-                model = model.to("xpu")
+                model = model.half().to(memory_format=torch.channels_last).to("xpu")
             else:
                 model = model.half().to(koboldai_vars.gpu_device)
         else:
@@ -1157,9 +1155,9 @@ def move_model_to_devices(model):
         gc.collect()
         generator = model.generate
         return
-    model.half()
     if use_ipex:
         model = model.to(memory_format=torch.channels_last)
+    model.half()
     gc.collect()
 
     if(hasattr(model, "transformer")):
@@ -3112,9 +3110,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 # Is CUDA available? If so, use GPU, otherwise fall back to CPU
                 if(koboldai_vars.hascuda and koboldai_vars.usegpu):
                     if use_ipex:
-                        model = model.half()
-                        model = model.to(memory_format=torch.channels_last)
-                        model = model.to("xpu")
+                        model = model.half().to(memory_format=torch.channels_last).to("xpu")
                     else:
                         model = model.half().to(koboldai_vars.gpu_device)
                     generator = model.generate
@@ -3261,9 +3257,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                     if(koboldai_vars.usegpu):
                         koboldai_vars.modeldim = get_hidden_size_from_model(model)
                         if use_ipex:
-                            model = model.half()
-                            model = model.to(memory_format=torch.channels_last)
-                            model = model.to("xpu")
+                            model = model.half().to(memory_format=torch.channels_last).to("xpu")
                         else:
                             model = model.half().to(koboldai_vars.gpu_device)
                         generator = model.generate
