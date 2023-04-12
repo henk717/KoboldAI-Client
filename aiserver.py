@@ -1124,8 +1124,11 @@ def move_model_to_devices(model):
     if(not utils.HAS_ACCELERATE and not koboldai_vars.breakmodel):
         if(koboldai_vars.usegpu):
             if use_ipex:
+                model = model.half()
                 model = model.to(memory_format=torch.channels_last)
-            model = model.half().to(koboldai_vars.gpu_device)
+                model = model.to("xpu")
+            else:
+                model = model.half().to(koboldai_vars.gpu_device)
         else:
             model = model.to('cpu').float()
         generator = model.generate
@@ -1154,9 +1157,9 @@ def move_model_to_devices(model):
         gc.collect()
         generator = model.generate
         return
+    model.half()
     if use_ipex:
         model = model.to(memory_format=torch.channels_last)
-    model.half()
     gc.collect()
 
     if(hasattr(model, "transformer")):
@@ -1803,6 +1806,8 @@ def get_model_info(model, directory=""):
                     data = [x for x in file.read().split("\n")[:2] if x != '']
                     if len(data) < 2:
                         data.append("0")
+                    if use_ipex:
+                        data = data.to(memory_format=torch.channels_last)
                     break_values, disk_blocks = data
                     break_values = break_values.split(",")
             else:
@@ -3108,7 +3113,12 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 koboldai_vars.modeldim = get_hidden_size_from_model(model)
                 # Is CUDA available? If so, use GPU, otherwise fall back to CPU
                 if(koboldai_vars.hascuda and koboldai_vars.usegpu):
-                    model = model.half().to(koboldai_vars.gpu_device)
+                    if use_ipex:
+                        model = model.half()
+                        model = model.to(memory_format=torch.channels_last)
+                        model = model.to("xpu")
+                    else:
+                        model = model.half().to(koboldai_vars.gpu_device)
                     generator = model.generate
                 else:
                     model = model.to('cpu').float()
@@ -3252,7 +3262,12 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 if(koboldai_vars.hascuda):
                     if(koboldai_vars.usegpu):
                         koboldai_vars.modeldim = get_hidden_size_from_model(model)
-                        model = model.half().to(koboldai_vars.gpu_device)
+                        if use_ipex:
+                            model = model.half()
+                            model = model.to(memory_format=torch.channels_last)
+                            model = model.to("xpu")
+                        else:
+                            model = model.half().to(koboldai_vars.gpu_device)
                         generator = model.generate
                     elif(koboldai_vars.breakmodel):  # Use both RAM and VRAM (breakmodel)
                         koboldai_vars.modeldim = get_hidden_size_from_model(model)
@@ -4592,6 +4607,8 @@ def get_message(msg):
                 data = file.read().split('\n')[:2]
                 if len(data) < 2:
                     data.append("0")
+                if use_ipex:
+                    data = data.to(memory_format=torch.channels_last)
                 gpu_layers, disk_layers = data
                 if gpu_layers == msg['gpu_layers'] and disk_layers == msg['disk_layers']:
                     changed = False
@@ -8850,6 +8867,8 @@ def UI_2_load_model(data):
             file_data = file.read().split('\n')[:2]
             if len(file_data) < 2:
                 file_data.append("0")
+            if use_ipex:
+                file_data = file_data.to(memory_format=torch.channels_last)
             gpu_layers, disk_layers = file_data
             if gpu_layers == data['gpu_layers'] and disk_layers == data['disk_layers']:
                 changed = False
