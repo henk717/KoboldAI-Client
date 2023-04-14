@@ -8708,8 +8708,7 @@ def UI_2_back(data):
 def UI_2_redo(data):
     if koboldai_vars.aibusy:
         return
-    if len(koboldai_vars.actions.get_current_options()) == 1:
-        koboldai_vars.actions.use_option(0)
+    koboldai_vars.actions.go_forward()
     
 
 #==================================================================#

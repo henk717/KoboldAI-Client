@@ -1751,6 +1751,13 @@ class KoboldStoryRegister(object):
                 process_variable_changes(self._socketio, "story", 'actions', {"id": action_step, 'action':  self.actions[action_step]}, None)
                 self.set_game_saved()
     
+    def go_forward(self):
+        action_step = self.action_count+1
+        if action_step in self.actions:
+            if len(self.get_current_options()) == 1:
+                logger.warning("Going forward with this text: {}".format(self.get_current_options()[0]["text"]))
+                self.use_option([x['text'] for x in self.actions[action_step]["Options"]].index(self.get_current_options()[0]["text"]))
+    
     def use_option(self, option_number, action_step=None):
         if action_step is None:
             action_step = self.action_count+1
@@ -1794,7 +1801,8 @@ class KoboldStoryRegister(object):
             old_text = self.actions[action_id]["Selected Text"]
             old_length = self.actions[action_id]["Selected Text Length"]
             if keep:
-                self.actions[action_id]["Options"].append({"text": self.actions[action_id]["Selected Text"], "Pinned": False, "Previous Selection": True, "Edited": False})
+                if {"text": self.actions[action_id]["Selected Text"], "Pinned": False, "Previous Selection": True, "Edited": False} not in self.actions[action_id]["Options"]:
+                    self.actions[action_id]["Options"].append({"text": self.actions[action_id]["Selected Text"], "Pinned": False, "Previous Selection": True, "Edited": False})
             self.actions[action_id]["Selected Text"] = ""
             if "wi_highlighted_text" in self.actions[action_id]:
                 del self.actions[action_id]["wi_highlighted_text"]
@@ -1819,7 +1827,7 @@ class KoboldStoryRegister(object):
             
     def get_current_options(self):
         if self.action_count+1 in self.actions:
-            return self.actions[self.action_count+1]["Options"]
+            return [x for x in self.actions[self.action_count+1]["Options"] if x['Edited'] != True]
         else:
             return []
             
