@@ -19,6 +19,8 @@ import inspect
 serverstarted = False
 queue = None
 multi_story = False
+global enable_whitelist
+enable_whitelist = False
 
 if importlib.util.find_spec("tortoise") is not None:
     from tortoise import api
@@ -649,11 +651,12 @@ class model_settings(settings):
     no_save_variables = ['modelconfig', 'custmodpth', 'generated_tkns', 
                          'loaded_layers', 'total_layers', 'total_download_chunks', 'downloaded_chunks', 'presets', 'default_preset', 
                          'welcome', 'welcome_default', 'simple_randomness', 'simple_creativity', 'simple_repitition',
-                         'badwordsids', 'uid_presets', 'revision', 'model', 'model_type', 'lazy_load', 'fp32_model', 'modeldim', 'horde_wait_time', 'horde_queue_position', 'horde_queue_size', 'newlinemode', 'tqdm_progress', 'tqdm_rem_time', '_tqdm']
+                         'badwordsids', 'uid_presets', 'model', 'model_type', 'lazy_load', 'fp32_model', 'modeldim', 'horde_wait_time', 'horde_queue_position', 'horde_queue_size', 'newlinemode', 'tqdm_progress', 'tqdm_rem_time', '_tqdm']
     settings_name = "model"
     default_settings = {"rep_pen" : 1.1, "rep_pen_slope": 0.7, "rep_pen_range": 1024, "temp": 0.5, "top_p": 0.9, "top_k": 0, "top_a": 0.0, "tfs": 1.0, "typical": 1.0,
                         "sampler_order": [6,0,1,2,3,4,5]}
     def __init__(self, socketio, koboldai_vars):
+        self.enable_whitelist = False
         self._socketio = socketio
         self.reset_for_model_load()
         self.model       = ""     # Model ID string chosen at startup
@@ -668,12 +671,6 @@ class model_settings(settings):
         self._tqdm        = tqdm.tqdm(total=self.genamt, file=self.ignore_tqdm())    # tqdm agent for generating tokens. This will allow us to calculate the remaining time
         self.tqdm_progress = 0     # TQDP progress
         self.tqdm_rem_time = 0     # tqdm calculated reemaining time
-        self.url         = "https://api.inferkit.com/v1/models/standard/generate" # InferKit API URL
-        self.oaiurl      = "" # OpenAI API URL
-        self.oaiengines  = "https://api.openai.com/v1/engines"
-        self.colaburl    = ""     # Ngrok url for Google Colab mode
-        self.apikey      = ""     # API key to use for InferKit API calls
-        self.oaiapikey   = ""     # API key to use for OpenAI API calls
         self.configname = None
         self.online_model = ''
         self.welcome_default = """<style>#welcome_container { display: block; } #welcome_text { display: flex; height: 100%; } .welcome_text { align-self: flex-end; }</style>
@@ -713,7 +710,6 @@ class model_settings(settings):
         self.sampler_order = [6, 0, 1, 2, 3, 4, 5]
         self.newlinemode = "n"
         self.lazy_load   = True # Whether or not to use torch_lazy_loader.py for transformers models in order to reduce CPU memory usage
-        self.revision    = None
         self.presets     = []   # Holder for presets
         self.selected_preset = ""
         self.uid_presets = []
@@ -877,6 +873,7 @@ class story_settings(settings):
         self.useprompt   = False   # Whether to send the full prompt with every submit action
         self.chatmode    = False
         self.chatname    = "You"
+        self.botname    = "Bot"
         self.adventure   = False
         self.actionmode  = 0
         self.storymode   = 0
@@ -944,7 +941,7 @@ class story_settings(settings):
         while os.path.exists(self.save_paths.base):
             try:
                 # If the stories share a story id, overwrite the existing one.
-                with open(self.save_paths.story, "r") as file:
+                with open(self.save_paths.story, "r", encoding="utf-8") as file:
                     j = json.load(file)
                     if self.story_id == j["story_id"]:
                         break
@@ -966,7 +963,7 @@ class story_settings(settings):
         v2_path = os.path.join("stories", f"{self.story_name}_v2.json")
         if os.path.exists(v2_path):
             logger.info("Migrating v2 save")
-            with open(v2_path, "r") as file:
+            with open(v2_path, "r", encoding="utf-8") as file:
                 v2j = json.load(file)
             
             if v2j["story_id"] == self.story_id:
@@ -974,9 +971,9 @@ class story_settings(settings):
             else:
                 logger.warning(f"Story mismatch in v2 migration. Existing file had story id {v2j['story_id']} but we have {self.story_id}")
 
-        with open(self.save_paths.story, "w") as file:
-            file.write(self.to_json())
         self.gamesaved = True
+        with open(self.save_paths.story, "w", encoding="utf-8") as file:
+            file.write(self.to_json())
     
     def update_story_path_structure(self, path: str) -> None:
         # Upon loading a file, makes directories that are required for certain
@@ -1008,7 +1005,7 @@ class story_settings(settings):
                 new_world_info.add_item([x.strip() for x in wi["key"].split(",")][0], 
                                         wi["key"], 
                                         wi.get("keysecondary", ""), 
-                                        "root" if wi["folder"] is None else self.wifolders_d[wi['folder']]['name'], 
+                                        "root" if wi["folder"] is None else self.wifolders_d[str(wi['folder'])]['name'], 
                                         wi.get("constant", False), 
                                         wi["content"], 
                                         wi.get("comment", ""), 
@@ -1130,7 +1127,7 @@ class story_settings(settings):
                 
 class user_settings(settings):
     local_only_variables = ['importjs']
-    no_save_variables = ['importnum', 'importjs', 'loadselect', 'spselect', 'svowname', 'saveow', 'laststory', 'sid']
+    no_save_variables = ['importnum', 'importjs', 'loadselect', 'spselect', 'svowname', 'saveow', 'laststory', 'sid', "revision"]
     settings_name = "user"
     def __init__(self, socketio):
         self._socketio = socketio
@@ -1176,7 +1173,16 @@ class user_settings(settings):
         self.screenshot_show_author_name = True
         self.screenshot_author_name = "Anonymous"
         self.screenshot_use_boring_colors = False
-        
+        self.oaiurl      = "" # OpenAI API URL
+        self.revision    = None
+        self.oaiengines  = "https://api.openai.com/v1/engines"
+        self.url         = "https://api.inferkit.com/v1/models/standard/generate" # InferKit API URL
+        self.colaburl    = ""     # Ngrok url for Google Colab mode
+        self.apikey      = ""     # API key to use for InferKit API calls
+        self.oaiapikey   = ""     # API key to use for OpenAI API calls
+        self.horde_api_key = "0000000000"
+        self.horde_worker_name = "My Awesome Instance"
+        self.horde_url = "https://horde.koboldai.net"
         
     def __setattr__(self, name, value):
         new_variable = name not in self.__dict__
@@ -1199,12 +1205,12 @@ class system_settings(settings):
     local_only_variables = ['lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 
                             'lua_koboldcore', 'regex_sl', 'acregex_ai', 'acregex_ui', 'comregex_ai', 
                             'comregex_ui', 'sp', '_horde_pid', 'inference_config', 'image_pipeline', 
-                            'summarizer', 'summary_tokenizer', 'tts_model']
+                            'summarizer', 'summary_tokenizer', 'tts_model', 'rng_states']
     no_save_variables = ['lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 
                          'lua_koboldcore', 'sp', 'sp_length', '_horde_pid', 'horde_share', 'aibusy', 
                          'serverstarted', 'inference_config', 'image_pipeline', 'summarizer', 
                          'summary_tokenizer', 'use_colab_tpu', 'noai', 'disable_set_aibusy', 'cloudflare_link', 'tts_model',
-                         'generating_image', 'bit_8_available', 'host', 'hascuda', 'usegpu', 'git_repository', 'git_branch']
+                         'generating_image', 'bit_8_available', 'host', 'hascuda', 'usegpu', 'rng_states', 'git_repository', 'git_branch']
     settings_name = "system"
     def __init__(self, socketio, koboldai_var):
         self._socketio = socketio
@@ -1260,6 +1266,7 @@ class system_settings(settings):
         self.disable_output_formatting = False
         self.full_determinism = False  # Whether or not full determinism is enabled
         self.seed_specified = False  # Whether or not the current RNG seed was specified by the user (in their settings file)
+        self.rng_states = {} # creates an empty dictionary to store the random number generator (RNG) states for a given seed, which is used to restore the RNG state later on
         self.seed        = None   # The current RNG seed (as an int), or None if unknown
         self.alt_gen = False # Use the calc_ai_text method for generating text to go to the AI
         self.theme_list = [".".join(f.split(".")[:-1]) for f in os.listdir("./themes") if os.path.isfile(os.path.join("./themes", f))]
@@ -1280,7 +1287,6 @@ class system_settings(settings):
         print("Colab Check: {}".format(self.on_colab))
         self.horde_share = False
         self._horde_pid = None
-        self.sh_apikey   = ""     # API key to use for txt2img from the Stable Horde.
         self.generating_image = False #The current status of image generation
         self.image_pipeline = None
         self.summarizer = None
@@ -1356,13 +1362,15 @@ class system_settings(settings):
                                     cluster_url = bridge_cd.cluster_url
                                     kai_name = bridge_cd.kai_name
                                     if kai_name == "My Awesome Instance":
-                                        kai_name = f"Automated Instance #{random.randint(-100000000, 100000000)}"
+                                        kai_name = f"KoboldAI UI Instance #{random.randint(-100000000, 100000000)}"
                                     api_key = bridge_cd.api_key
                                     priority_usernames = bridge_cd.priority_usernames
                                 except:
-                                    cluster_url = "http://koboldai.net"
-                                    kai_name = f"Automated Instance #{random.randint(-100000000, 100000000)}"
-                                    api_key = "0000000000"
+                                    cluster_url = "https://horde.koboldai.net"
+                                    kai_name = self._koboldai_var.horde_worker_name
+                                    if kai_name == "My Awesome Instance":
+                                        kai_name = f"KoboldAI UI Instance #{random.randint(-100000000, 100000000)}"
+                                    api_key = self._koboldai_var.horde_api_key
                                     priority_usernames = []
                                 # Always use the local URL & port
                                 kai_url = f'http://127.0.0.1:{self.port}'
@@ -1502,7 +1510,7 @@ class KoboldStoryRegister(object):
                                 else:
                                     self.actions[i]["Probabilities"][token_num][token_option]["Used"] = False
             if "Options" in self.actions[i]:
-                for j in range(len(self.actions[i]["Options"])):
+                for j in reversed(range(len(self.actions[i]["Options"]))):
                     if self.actions[i]["Options"][j]["text"] == text:
                         del self.actions[i]["Options"][j]
             if old_text != "":
@@ -2271,14 +2279,16 @@ class KoboldWorldInfo(object):
                 self.delete(key)
         if folder in self.world_info_folder:
             del self.world_info_folder[folder]
+        self.sync_world_info_to_old_format()
         if self._socketio is not None:
             self._socketio.emit("delete_world_info_folder", folder, broadcast=True, room="UI_2")
+            self._socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
         logger.debug("Calcing AI Text from WI Folder Delete")
         ignore = self._koboldai_vars.calc_ai_text()
         
     def add_item_to_folder(self, uid, folder, before=None):
         if uid in self.world_info:
-            #fiirst we need to remove the item from whatever folder it's in
+            #first we need to remove the item from whatever folder it's in
             for temp in self.world_info_folder:
                 if uid in self.world_info_folder[temp]:
                     self.world_info_folder[temp].remove(uid)
@@ -2363,7 +2373,8 @@ class KoboldWorldInfo(object):
             raise
         if folder not in self.world_info_folder:
             self.world_info_folder[folder] = []
-        self.world_info_folder[folder].append(uid)
+        if uid not in self.world_info_folder[folder]:
+            self.world_info_folder[folder].append(uid)
         self.story_settings.gamesaved = False
         if sync:
             self.sync_world_info_to_old_format()
@@ -2449,7 +2460,7 @@ class KoboldWorldInfo(object):
         
     def delete(self, uid):
         del self.world_info[uid]
-
+        
         try:
             os.remove(os.path.join(self._koboldai_vars.save_paths.wi_images, str(uid)))
         except FileNotFoundError:
@@ -2495,7 +2506,8 @@ class KoboldWorldInfo(object):
         self.story_settings.gamesaved = False
         self.sync_world_info_to_old_format()
         if self._socketio is not None:
-            self._socketio.emit("world_info_folder", {x: self.world_info_folder[x] for x in self.world_info_folder}, broadcast=True, room="UI_2")
+            self._socketio.emit("delete_world_info_folder", old_folder, broadcast=True, room="UI_2")
+            self.send_to_ui()
     
     def reorder(self, uid, before):
         self.add_item_to_folder(uid, self.world_info[before]['folder'], before=before)
@@ -2542,14 +2554,10 @@ class KoboldWorldInfo(object):
                     file.write(base64.b64decode(image_b64))
         
         data["entries"] = {k: self.upgrade_entry(v) for k,v in data["entries"].items()}
-
-        if folder is None:
-            self.world_info_folder = data['folders']
         
         #Add the item
         start_time = time.time()
         for uid, item in data['entries'].items():
-            
             self.add_item(item['title'] if 'title' in item else item['key'][0], 
                           item['key'] if 'key' in item else [], 
                           item['keysecondary'] if 'keysecondary' in item else [], 
@@ -2561,10 +2569,9 @@ class KoboldWorldInfo(object):
                           use_wpp=item['use_wpp'] if 'use_wpp' in item else False, 
                           wpp=item['wpp'] if 'wpp' in item else {'name': "", 'type': "", 'format': "W++", 'attributes': {}},
                           object_type=item.get("object_type"),
+                          v1_uid=item.get("v1_uid"),
                           recalc=False, sync=False)
-        if folder is None:
-            #self.world_info = {int(x): data['entries'][x] for x in data['entries']}
-            self.world_info_folder = data['folders']
+
         logger.debug("Load World Info took {}s".format(time.time()-start_time))
         try:
             start_time = time.time()
@@ -2578,55 +2585,62 @@ class KoboldWorldInfo(object):
     
     def sync_world_info_to_old_format(self):
         #Since the old UI uses world info entries for folders, we need to make some up
+        if "root" not in self.world_info_folder:
+            old_world_info_folder = self.world_info_folder
+            self.world_info_folder = OrderedDict()
+            self.world_info_folder["root"] = []
+            self.world_info_folder.update(old_world_info_folder)
         folder_entries = {}
         i=-1
         for folder in self.world_info_folder:
             folder_entries[folder] = i
             i-=1
-    
-    
+        
+        #self.wifolders_l = []     # List of World Info folder UIDs
+        self.story_settings.wifolders_l = [folder_entries[x] for x in folder_entries if x != "root"]
+        
         #self.worldinfo_i = []     # List of World Info key/value objects sans uninitialized entries
         self.story_settings.worldinfo_i = [{
-                                            "comment": self.world_info[x]['comment'],
-                                            "constant": self.world_info[x]['constant'],
-                                            "content": self.world_info[x]['content'],
-                                            "folder": folder_entries[self.world_info[x]['folder']],
-                                            "init": True,
                                             "key": ",".join(self.world_info[x]['key']),
                                             "keysecondary": ",".join(self.world_info[x]['keysecondary']),
+                                            "content": self.world_info[x]['content'],
+                                            "comment": self.world_info[x]['comment'],
+                                            "folder": folder_entries[self.world_info[x]['folder']] if self.world_info[x]['folder'] != "root" else None,
                                             "num": x,
+                                            "init": True,
                                             "selective": len(self.world_info[x]['keysecondary'])>0,
+                                            "constant": self.world_info[x]['constant'],
                                             "uid": self.world_info[x]['uid'] if 'v1_uid' not in self.world_info[x] or self.world_info[x]['v1_uid'] is None else self.world_info[x]['v1_uid']
                                         } for x in self.world_info]
-                                        
+        
         #self.worldinfo   = []     # List of World Info key/value objects
         self.story_settings.worldinfo = [x for x in self.story_settings.worldinfo_i]
         #We have to have an uninitialized blank entry for every folder or the old method craps out
         for folder in folder_entries:
             self.story_settings.worldinfo.append({
-                                            "comment": "",
-                                            "constant": False,
-                                            "content": "",
-                                            "folder": folder_entries[folder],
-                                            "init": False,
                                             "key": "",
                                             "keysecondary": "",
+                                            "content": "",
+                                            "comment": "",
+                                            "folder": folder_entries[folder] if folder != "root" else None,
                                             "num": (0 if len(self.world_info) == 0 else max(self.world_info))+(folder_entries[folder]*-1),
+                                            "init": False,
                                             "selective": False,
+                                            "constant": False,
                                             "uid": folder_entries[folder]
                                         })
         
+        mapping = {uid: index for index, uid in enumerate(self.story_settings.wifolders_l)}
+        self.story_settings.worldinfo.sort(key=lambda x: mapping[x["folder"]] if x["folder"] is not None else float("inf"))
+        
         #self.wifolders_d = {}     # Dictionary of World Info folder UID-info pairs
-        self.story_settings.wifolders_d = {folder_entries[x]: {'collapsed': False, 'name': x} for x in folder_entries}
+        self.story_settings.wifolders_d = {str(folder_entries[x]): {'name': x, 'collapsed': False} for x in folder_entries if x != "root"}
         
         #self.worldinfo_u = {}     # Dictionary of World Info UID - key/value pairs
-        self.story_settings.worldinfo_u = {x['uid']: x for x in self.story_settings.worldinfo}
-        
-        #self.wifolders_l = []     # List of World Info folder UIDs
-        self.story_settings.wifolders_l = [folder_entries[x] for x in folder_entries]
+        self.story_settings.worldinfo_u = {str(y["uid"]): y for x in folder_entries for y in self.story_settings.worldinfo if y["folder"] == (folder_entries[x] if x != "root" else None)}
         
         #self.wifolders_u = {}     # Dictionary of pairs of folder UID - list of WI UID
-        self.story_settings.wifolders_u = {folder_entries[x]: [y for y in self.story_settings.worldinfo if y['folder'] == x] for x in folder_entries}
+        self.story_settings.wifolders_u = {str(folder_entries[x]): [y for y in self.story_settings.worldinfo if y['folder'] == folder_entries[x]] for x in folder_entries if x != "root"}
         
     def reset_used_in_game(self):
         for key in self.world_info:
@@ -2745,5 +2759,3 @@ default_preset = {
     }
 badwordsids_default = [[6880], [50256], [42496], [4613], [17414], [22039], [16410], [27], [29], [38430], [37922], [15913], [24618], [28725], [58], [47175], [36937], [26700], [12878], [16471], [37981], [5218], [29795], [13412], [45160], [3693], [49778], [4211], [20598], [36475], [33409], [44167], [32406], [29847], [29342], [42669], [685], [25787], [7359], [3784], [5320], [33994], [33490], [34516], [43734], [17635], [24293], [9959], [23785], [21737], [28401], [18161], [26358], [32509], [1279], [38155], [18189], [26894], [6927], [14610], [23834], [11037], [14631], [26933], [46904], [22330], [25915], [47934], [38214], [1875], [14692], [41832], [13163], [25970], [29565], [44926], [19841], [37250], [49029], [9609], [44438], [16791], [17816], [30109], [41888], [47527], [42924], [23984], [49074], [33717], [31161], [49082], [30138], [31175], [12240], [14804], [7131], [26076], [33250], [3556], [38381], [36338], [32756], [46581], [17912], [49146]] # Tokenized array of badwords used to prevent AI artifacting
 badwordsids_neox = [[0], [1], [44162], [9502], [12520], [31841], [36320], [49824], [34417], [6038], [34494], [24815], [26635], [24345], [3455], [28905], [44270], [17278], [32666], [46880], [7086], [43189], [37322], [17778], [20879], [49821], [3138], [14490], [4681], [21391], [26786], [43134], [9336], [683], [48074], [41256], [19181], [29650], [28532], [36487], [45114], [46275], [16445], [15104], [11337], [1168], [5647], [29], [27482], [44965], [43782], [31011], [42944], [47389], [6334], [17548], [38329], [32044], [35487], [2239], [34761], [7444], [1084], [12399], [18990], [17636], [39083], [1184], [35830], [28365], [16731], [43467], [47744], [1138], [16079], [40116], [45564], [18297], [42368], [5456], [18022], [42696], [34476], [23505], [23741], [39334], [37944], [45382], [38709], [33440], [26077], [43600], [34418], [36033], [6660], [48167], [48471], [15775], [19884], [41533], [1008], [31053], [36692], [46576], [20095], [20629], [31759], [46410], [41000], [13488], [30952], [39258], [16160], [27655], [22367], [42767], [43736], [49694], [13811], [12004], [46768], [6257], [37471], [5264], [44153], [33805], [20977], [21083], [25416], [14277], [31096], [42041], [18331], [33376], [22372], [46294], [28379], [38475], [1656], [5204], [27075], [50001], [16616], [11396], [7748], [48744], [35402], [28120], [41512], [4207], [43144], [14767], [15640], [16595], [41305], [44479], [38958], [18474], [22734], [30522], [46267], [60], [13976], [31830], [48701], [39822], [9014], [21966], [31422], [28052], [34607], [2479], [3851], [32214], [44082], [45507], [3001], [34368], [34758], [13380], [38363], [4299], [46802], [30996], [12630], [49236], [7082], [8795], [5218], [44740], [9686], [9983], [45301], [27114], [40125], [1570], [26997], [544], [5290], [49193], [23781], [14193], [40000], [2947], [43781], [9102], [48064], [42274], [18772], [49384], [9884], [45635], [43521], [31258], [32056], [47686], [21760], [13143], [10148], [26119], [44308], [31379], [36399], [23983], [46694], [36134], [8562], [12977], [35117], [28591], [49021], [47093], [28653], [29013], [46468], [8605], [7254], [25896], [5032], [8168], [36893], [38270], [20499], [27501], [34419], [29547], [28571], [36586], [20871], [30537], [26842], [21375], [31148], [27618], [33094], [3291], [31789], [28391], [870], [9793], [41361], [47916], [27468], [43856], [8850], [35237], [15707], [47552], [2730], [41449], [45488], [3073], [49806], [21938], [24430], [22747], [20924], [46145], [20481], [20197], [8239], [28231], [17987], [42804], [47269], [29972], [49884], [21382], [46295], [36676], [34616], [3921], [26991], [27720], [46265], [654], [9855], [40354], [5291], [34904], [44342], [2470], [14598], [880], [19282], [2498], [24237], [21431], [16369], [8994], [44524], [45662], [13663], [37077], [1447], [37786], [30863], [42854], [1019], [20322], [4398], [12159], [44072], [48664], [31547], [18736], [9259], [31], [16354], [21810], [4357], [37982], [5064], [2033], [32871], [47446], [62], [22158], [37387], [8743], [47007], [17981], [11049], [4622], [37916], [36786], [35138], [29925], [14157], [18095], [27829], [1181], [22226], [5709], [4725], [30189], [37014], [1254], [11380], [42989], [696], [24576], [39487], [30119], [1092], [8088], [2194], [9899], [14412], [21828], [3725], [13544], [5180], [44679], [34398], [3891], [28739], [14219], [37594], [49550], [11326], [6904], [17266], [5749], [10174], [23405], [9955], [38271], [41018], [13011], [48392], [36784], [24254], [21687], [23734], [5413], [41447], [45472], [10122], [17555], [15830], [47384], [12084], [31350], [47940], [11661], [27988], [45443], [905], [49651], [16614], [34993], [6781], [30803], [35869], [8001], [41604], [28118], [46462], [46762], [16262], [17281], [5774], [10943], [5013], [18257], [6750], [4713], [3951], [11899], [38791], [16943], [37596], [9318], [18413], [40473], [13208], [16375]]
-badwordsids_opt = [[44717], [46613], [48513], [49923], [50185], [48755], [8488], [43303], [49659], [48601], [49817], [45405], [48742], [49925], [47720], [11227], [48937], [48784], [50017], [42248], [49310], [48082], [49895], [50025], [49092], [49007], [8061], [44226], [0], [742], [28578], [15698], [49784], [46679], [39365], [49281], [49609], [48081], [48906], [46161], [48554], [49670], [48677], [49721], [49632], [48610], [48462], [47457], [10975], [46077], [28696], [48709], [43839], [49798], [49154], [48203], [49625], [48395], [50155], [47161], [49095], [48833], [49420], [49666], [48443], [22176], [49242], [48651], [49138], [49750], [40389], [48021], [21838], [49070], [45333], [40862], [1], [49915], [33525], [49858], [50254], [44403], [48992], [48872], [46117], [49853], [47567], [50206], [41552], [50068], [48999], [49703], [49940], [49329], [47620], [49868], [49962], [2], [44082], [50236], [31274], [50260], [47052], [42645], [49177], [17523], [48691], [49900], [49069], [49358], [48794], [47529], [46479], [48457], [646], [49910], [48077], [48935], [46386], [48902], [49151], [48759], [49803], [45587], [48392], [47789], [48654], [49836], [49230], [48188], [50264], [46844], [44690], [48505], [50161], [27779], [49995], [41833], [50154], [49097], [48520], [50018], [8174], [50084], [49366], [49526], [50193], [7479], [49982], [3]]
-
