@@ -73,6 +73,8 @@ from utils import debounce
 import utils
 import koboldai_settings
 import torch
+if use_ipex:
+    import intel_extension_for_pytorch as ipex
 from transformers import StoppingCriteria, GPT2Tokenizer, GPT2LMHeadModel, GPTNeoForCausalLM, GPTNeoModel, AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer, PreTrainedModel, modeling_utils, AutoModelForTokenClassification
 from transformers import __version__ as transformers_version
 import transformers
@@ -1125,6 +1127,7 @@ def move_model_to_devices(model):
         if(koboldai_vars.usegpu):
             if use_ipex:
                 model = model.half().to(memory_format=torch.channels_last).to("xpu")
+                model = ipex.optimize(model, dtype=torch.float16)
             else:
                 model = model.half().to(koboldai_vars.gpu_device)
         else:
@@ -1155,9 +1158,9 @@ def move_model_to_devices(model):
         gc.collect()
         generator = model.generate
         return
-
-    model.half()
-    gc.collect()
+    with torch.xpu.amp.autocast(enabled=True, dtype=torch.float16, cache_enabled=False):
+        model.half()
+        gc.collect()
 
     if(hasattr(model, "transformer")):
         model.transformer.wte.to(breakmodel.primary_device)
@@ -1655,8 +1658,7 @@ def general_startup(override_args=None):
 
     if args.ipex or use_ipex:
         use_ipex = True
-        os.environ['IPEX'] = str(1)
-        import intel_extension_for_pytorch as ipex
+        os.environ['IPEX'] = str(1)       
         torch.cuda.device_count = torch.xpu.device_count
         torch.cuda.get_device_name = torch.xpu.get_device_name
         torch.cuda.is_available = torch.xpu.is_available
@@ -3108,6 +3110,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 if(koboldai_vars.hascuda and koboldai_vars.usegpu):
                     if use_ipex:
                         model = model.half().to(memory_format=torch.channels_last).to("xpu")
+                        model = ipex.optimize(model, dtype=torch.float16)
                     else:
                         model = model.half().to(koboldai_vars.gpu_device)
                     generator = model.generate
@@ -3255,6 +3258,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                         koboldai_vars.modeldim = get_hidden_size_from_model(model)
                         if use_ipex:
                             model = model.half().to(memory_format=torch.channels_last).to("xpu")
+                            model = ipex.optimize(model, dtype=torch.float16)
                         else:
                             model = model.half().to(koboldai_vars.gpu_device)
                         generator = model.generate
@@ -5906,15 +5910,16 @@ def torch_raw_generate(
 
     with torch.no_grad():
         start_time = time.time()
-        genout = generator(
-            gen_in, 
-            do_sample=True, 
-            max_length=min(len(prompt_tokens) + max_new, koboldai_vars.max_length),
-            repetition_penalty=1.0,
-            bad_words_ids=koboldai_vars.badwordsids + additional_bad_words_ids,
-            use_cache=True,
-            num_return_sequences=batch_count,
-        )
+        with torch.xpu.amp.autocast(enabled=True, dtype=torch.float16, cache_enabled=False):
+            genout = generator(
+                gen_in, 
+                do_sample=True, 
+                max_length=min(len(prompt_tokens) + max_new, koboldai_vars.max_length),
+                repetition_penalty=1.0,
+                bad_words_ids=koboldai_vars.badwordsids + additional_bad_words_ids,
+                use_cache=True,
+                num_return_sequences=batch_count,
+            )
     logger.debug("torch_raw_generate: run generator {}s".format(time.time()-start_time))    
     
     return genout
