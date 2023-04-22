@@ -1506,6 +1506,7 @@ def general_startup(override_args=None):
     parser.add_argument("--revision", help="Specify the model revision for huggingface models (can be a git branch/tag name or a git commit hash)")
     parser.add_argument("--cpu", action='store_true', help="By default unattended launches are on the GPU use this option to force CPU usage.")
     parser.add_argument("--ipex", action='store_true', help="Use Intel Extension for PyTorch")
+    parser.add_argument("--ipex_amp", action='store_true', help="Optional: Use Intel Auto Mixed Precision.")
     parser.add_argument("--breakmodel", action='store_true', help=argparse.SUPPRESS)
     parser.add_argument("--breakmodel_layers", type=int, help=argparse.SUPPRESS)
     parser.add_argument("--breakmodel_gpulayers", type=str, help="If using a model that supports hybrid generation, this is a comma-separated list that specifies how many layers to put on each GPU device. For example to put 8 layers on device 0, 9 layers on device 1 and 11 layers on device 2, use --breakmodel_gpulayers 8,9,11")
@@ -5909,7 +5910,19 @@ def torch_raw_generate(
 
     with torch.no_grad():
         start_time = time.time()
-        with torch.xpu.amp.autocast(enabled=True, dtype=torch.float16, cache_enabled=False):
+        #Intel recommends to use AMP but Pygmalion runs faster without it.
+        if args.ipex_amp:
+            with torch.xpu.amp.autocast(enabled=True, dtype=torch.float16, cache_enabled=False):
+                genout = generator(
+                    gen_in, 
+                    do_sample=True, 
+                    max_length=min(len(prompt_tokens) + max_new, koboldai_vars.max_length),
+                    repetition_penalty=1.0,
+                    bad_words_ids=koboldai_vars.badwordsids + additional_bad_words_ids,
+                    use_cache=True,
+                    num_return_sequences=batch_count,
+                )
+        else:
             genout = generator(
                 gen_in, 
                 do_sample=True, 
