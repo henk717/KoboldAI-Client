@@ -1,5 +1,5 @@
-## Experimental Support for Intel ARC IPEX
-This fork adds experimental support for Intel ARC GPUs with IPEX
+##Intel ARC IPEX Support
+This fork adds support for Intel ARC GPUs with IPEX
 
 Install intel-compute-runtime-bin and intel-oneapi-basekit and then use play-oneapi.sh
 
