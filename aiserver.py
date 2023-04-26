@@ -73,8 +73,13 @@ from utils import debounce
 import utils
 import koboldai_settings
 import torch
-if use_ipex:
+try:
     import intel_extension_for_pytorch as ipex
+except:
+    if use_ipex:
+        print("Failed to import IPEX")
+    else:
+        pass
 from transformers import StoppingCriteria, GPT2Tokenizer, GPT2LMHeadModel, GPTNeoForCausalLM, GPTNeoModel, AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer, PreTrainedModel, modeling_utils, AutoModelForTokenClassification
 from transformers import __version__ as transformers_version
 import transformers
@@ -1124,9 +1129,8 @@ def move_model_to_devices(model):
 
     if(not utils.HAS_ACCELERATE and not koboldai_vars.breakmodel):
         if(koboldai_vars.usegpu):
-            if use_ipex:
-                model = model.half().to(memory_format=torch.channels_last).to("xpu")
-                #model = ipex.optimize(model, dtype=torch.float16)
+            if args.torch_channels_last:
+                model = model.half().to(memory_format=torch.channels_last).to(koboldai_vars.gpu_device)
             else:
                 model = model.half().to(koboldai_vars.gpu_device)
         else:
@@ -1505,7 +1509,8 @@ def general_startup(override_args=None):
     parser.add_argument("--revision", help="Specify the model revision for huggingface models (can be a git branch/tag name or a git commit hash)")
     parser.add_argument("--cpu", action='store_true', help="By default unattended launches are on the GPU use this option to force CPU usage.")
     parser.add_argument("--ipex", action='store_true', help="Use Intel Extension for PyTorch")
-    parser.add_argument("--ipex_amp", action='store_true', help="Optional: Use Intel Auto Mixed Precision.")
+    parser.add_argument("--ipex_amp", action='store_true', help="Use Intel Auto Mixed Precision.")
+    parser.add_argument("--torch_channels_last", action='store_true', help="Use torch.channels_last format.")
     parser.add_argument("--breakmodel", action='store_true', help=argparse.SUPPRESS)
     parser.add_argument("--breakmodel_layers", type=int, help=argparse.SUPPRESS)
     parser.add_argument("--breakmodel_gpulayers", type=str, help="If using a model that supports hybrid generation, this is a comma-separated list that specifies how many layers to put on each GPU device. For example to put 8 layers on device 0, 9 layers on device 1 and 11 layers on device 2, use --breakmodel_gpulayers 8,9,11")
@@ -3107,9 +3112,8 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 koboldai_vars.modeldim = get_hidden_size_from_model(model)
                 # Is CUDA available? If so, use GPU, otherwise fall back to CPU
                 if(koboldai_vars.hascuda and koboldai_vars.usegpu):
-                    if use_ipex:
-                        model = model.half().to(memory_format=torch.channels_last).to("xpu")
-                        #model = ipex.optimize(model, dtype=torch.float16)
+                    if args.torch_channels_last:
+                        model = model.half().to(memory_format=torch.channels_last).to(koboldai_vars.gpu_device)
                     else:
                         model = model.half().to(koboldai_vars.gpu_device)
                     generator = model.generate
@@ -3255,9 +3259,8 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 if(koboldai_vars.hascuda):
                     if(koboldai_vars.usegpu):
                         koboldai_vars.modeldim = get_hidden_size_from_model(model)
-                        if use_ipex:
-                            model = model.half().to(memory_format=torch.channels_last).to("xpu")
-                            #model = ipex.optimize(model, dtype=torch.float16)
+                        if args.torch_channels_last:
+                            model = model.half().to(memory_format=torch.channels_last).to(koboldai_vars.gpu_device)
                         else:
                             model = model.half().to(koboldai_vars.gpu_device)
                         generator = model.generate
