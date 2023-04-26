@@ -40,3 +40,4 @@ dependencies:
     - ftfy
     - pydub
     - diffusers
+    - pygments
