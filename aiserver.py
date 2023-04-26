@@ -1161,7 +1161,10 @@ def move_model_to_devices(model):
         gc.collect()
         generator = model.generate
         return
-    model.half()
+    if args.torch_channels_last:
+        model.half().to(memory_format=torch.channels_last)
+    else:
+        model.half()
     gc.collect()
 
     if(hasattr(model, "transformer")):
