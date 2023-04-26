@@ -7,7 +7,7 @@ dependencies:
   - flask-socketio=5.3.2
   - flask-session=0.4.0
   - python-socketio=5.7.2
-  - python=3.10.*
+  - python=3.8.*
   - eventlet=0.33.3
   - dnspython=2.2.1
   - markdown
@@ -23,12 +23,13 @@ dependencies:
   - Pillow
   - psutil
   - pip:
-    - https://github.com/TotalDay/Intel_ARC_GPU_WSL_Stable_Diffusion_WEBUI/releases/download/intel_extension_for_pytorch/torch-1.13.0a0+git7c98e70-cp310-cp310-linux_x86_64.whl
-    - https://github.com/TotalDay/Intel_ARC_GPU_WSL_Stable_Diffusion_WEBUI/releases/download/intel_extension_for_pytorch/intel_extension_for_pytorch-1.13.10+xpu-cp310-cp310-linux_x86_64.whl
+    - --extra-index-url https://developer.intel.com/ipex-whl-stable-xpu  
+    - torch==1.13.0a0
+    - intel_extension_for_pytorch==1.13.10+xpu
     - flask-cloudflared==0.0.10
     - flask-ngrok
     - flask-cors
-    - lupa
+    - lupa==1.10
     - transformers==4.28.0
     - huggingface_hub==0.12.1
     - safetensors
@@ -40,4 +41,3 @@ dependencies:
     - ftfy
     - pydub
     - diffusers
-    - pygments
