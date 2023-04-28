@@ -29,6 +29,21 @@
 				</script>
 			</div>
 		</div>
+		<div id="Vector-Memory" class="var_sync_alt_system_experimental_features">
+			<h4 class="section_header"><label for="vector_memory">Vector-Memory (Display Only)</label></h4>
+			<div class="help_text">
+				Uses vectors to find similar sentences in the game text to add to memory
+			</div>
+			<button class="settings_button" onclick="document.getElementById('vector_memory').value = 'Generating...';socket.emit('calc_vector_memory', {});">Generate</button>
+			<textarea rows=20 id="vector_memory" class="var_sync_story_vector_memory fullwidth" oninput="autoResize(this)" autocomplete="off"></textarea>
+		</div>
+		<div class="setting_tile_area wi_settings">
+		{% with menu='Vector Memory' %}
+			{% with sub_path='' %}
+				{% include 'settings item.html' %}
+			{% endwith %}
+		{% endwith %}
+		</div>
 		<div id="Auto-Memory" class="var_sync_alt_system_experimental_features">
 			<h4 class="section_header"><label for="auto_memory">Auto-Memory (non-functional)</label></h4>
 			<div class="help_text">

@@ -92,6 +92,13 @@ global allowed_ips
 allowed_ips = set()  # empty set
 enable_whitelist = False
 
+######## Vector Database for vector memory ##############
+try:
+    import chromadb
+    import pandas as pd
+    client = chromadb.Client(chromadb.config.Settings (anonymized_telemetry=False))
+except:
+    client = None
 
 if lupa.LUA_VERSION[:2] != (5, 4):
     logger.error(f"Please install lupa==1.10. You have lupa {lupa.__version__}.")
@@ -8690,7 +8697,7 @@ def UI_2_Use_Option_Text(data):
         koboldai_vars.actions.use_option(int(data['option']), action_step=int(data['chunk']))
 
 #==================================================================#
-# Event triggered when Option is Selected
+# Event triggered when Option is deleted
 #==================================================================#
 @socketio.on('delete_option')
 @logger.catch
@@ -8715,10 +8722,46 @@ def UI_2_submit(data):
         koboldai_vars.actions.clear_unused_options()
         koboldai_vars.lua_koboldbridge.feedback = None
         koboldai_vars.recentrng = koboldai_vars.recentrngm = None
+        
+        calc_vector_memory(new_action=data['data'])
+        
         if koboldai_vars.actions.action_count == -1:
             actionsubmit(data['data'], actionmode=koboldai_vars.actionmode)
         else:
             actionsubmit(data['data'], actionmode=koboldai_vars.actionmode)
+ 
+ 
+#==================================================================#
+# Generates vector memory
+#==================================================================#
+@socketio.on('calc_vector_memory')
+@logger.catch
+def calc_vector_memory(new_text):
+    ######################################### Get Action Text by Sentence ########################################################
+    action_text_split = koboldai_vars.actions.to_sentences(submitted_text=new_text)
+    
+    ######################################### Recreate vector database ###########################################################
+    action_sentences = [x[0] for x in action_text_split]
+    if len(action_sentences) > 0 and client is not None:
+        action_sentences = [" ".join(action_sentences[i * koboldai_vars.vector_sentence_width:(i + 1) * koboldai_vars.vector_sentence_width]).strip() for i in range((len(action_sentences) + koboldai_vars.vector_sentence_width - 1) // koboldai_vars.vector_sentence_width )]
+        try:
+            client.delete_collection("koboldai_story")
+        except:
+            pass
+        collection = client.create_collection("koboldai_story") 
+        collection.add(documents=action_sentences, ids=[str(x) for x in range(len(action_sentences))])
+        results = collection.query(
+            query_texts=[action_sentences[-koboldai_vars.vector_input_width if koboldai_vars.vector_input_width > len(action_sentences) else -len(action_sentences):]],
+            n_results=koboldai_vars.vector_return_width if len(action_sentences) > koboldai_vars.vector_return_width else 1,
+            include=["documents", "distances"]
+        )
+        results = {x: results[x][0] for x in results if results[x] is not None}
+        df = pd.DataFrame.from_dict(results).sort_values('distances', ascending=True)
+        df = df[df["distances"] <= koboldai_vars.vector_max_distance]
+        koboldai_vars.vector_memory = " ".join(df['documents'].to_list())
+    else:
+        koboldai_vars.vector_memory = ""
+    logger.info("Vector_Memory: {}".format(koboldai_vars.vector_memory))
  
  #==================================================================#
 # Event triggered when user clicks the submit button

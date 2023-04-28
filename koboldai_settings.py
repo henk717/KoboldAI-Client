@@ -684,6 +684,7 @@ class model_settings(settings):
         self.welcome     = self.welcome_default
         self._koboldai_vars = koboldai_vars
         self.alt_multi_gen = False
+        self.bit_8_available = False
         
     def reset_for_model_load(self):
         self.simple_randomness = 0 #Set first as this affects other outputs
@@ -920,6 +921,8 @@ class story_settings(settings):
         self.commentary_enabled = False
         
         self.save_paths = SavePaths(os.path.join("stories", self.story_name or "Untitled"))
+        
+        self.vector_memory = ""
 
         ################### must be at bottom #########################
         self.no_save = False  #Temporary disable save (doesn't save with the file)
@@ -1183,6 +1186,10 @@ class user_settings(settings):
         self.horde_api_key = "0000000000"
         self.horde_worker_name = "My Awesome Instance"
         self.horde_url = "https://horde.koboldai.net"
+        self.vector_sentence_width = 1
+        self.vector_return_width = 3
+        self.vector_input_width = 1
+        self.vector_max_distance = 1.0
         
     def __setattr__(self, name, value):
         new_variable = name not in self.__dict__
