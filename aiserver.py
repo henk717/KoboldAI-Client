@@ -1132,7 +1132,7 @@ def move_model_to_devices(model):
             if args.torch_channels_last:
                 model = model.to(memory_format=torch.channels_last)
             if args.ipex_optimize:
-                model = ipex.optimize(model, dtype=torch.float16, weights_prepack=False)
+                model = ipex.optimize(model, dtype=torch.float16, conv_bn_folding=False, linear_bn_folding=False, weights_prepack=False)
             model = model.half().to(koboldai_vars.gpu_device)
         else:
             model = model.to('cpu').float()
@@ -1165,7 +1165,7 @@ def move_model_to_devices(model):
     if args.torch_channels_last:
         model = model.to(memory_format=torch.channels_last)
     if args.ipex_optimize:
-        model = ipex.optimize(model, dtype=torch.float16, weights_prepack=False)
+        model = ipex.optimize(model, dtype=torch.float16, conv_bn_folding=False, linear_bn_folding=False, weights_prepack=False)
     model.half()
     gc.collect()
 
@@ -3133,7 +3133,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                     if args.torch_channels_last:
                         model = model.to(memory_format=torch.channels_last)
                     if args.ipex_optimize:
-                        model = ipex.optimize(model, dtype=torch.float16, weights_prepack=False)
+                        model = ipex.optimize(model, dtype=torch.float16, conv_bn_folding=False, linear_bn_folding=False, weights_prepack=False)
                     model = model.half().to(koboldai_vars.gpu_device)
                     generator = model.generate
                 else:
@@ -3281,7 +3281,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                         if args.torch_channels_last:
                             model = model.to(memory_format=torch.channels_last)
                         if args.ipex_optimize:
-                            model = ipex.optimize(model, dtype=torch.float16, weights_prepack=False)
+                            model = ipex.optimize(model, dtype=torch.float16, conv_bn_folding=False, linear_bn_folding=False, weights_prepack=False)
                         model = model.half().to(koboldai_vars.gpu_device)
                         generator = model.generate
                     elif(koboldai_vars.breakmodel):  # Use both RAM and VRAM (breakmodel)
