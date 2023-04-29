@@ -26,7 +26,7 @@ dependencies:
   - pip:
     - --extra-index-url https://developer.intel.com/ipex-whl-stable-xpu  
     - torch==1.13.0a0
-    - intel_extension_for_pytorch==1.13.10+xpu
+    - intel_extension_for_pytorch==1.13.120+xpu
     - flask-cloudflared==0.0.10
     - flask-ngrok
     - flask-cors
