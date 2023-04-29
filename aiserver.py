@@ -1130,9 +1130,8 @@ def move_model_to_devices(model):
     if(not utils.HAS_ACCELERATE and not koboldai_vars.breakmodel):
         if(koboldai_vars.usegpu):
             if args.torch_channels_last:
-                model = model.half().to(memory_format=torch.channels_last).to(koboldai_vars.gpu_device)
-            else:
-                model = model.half().to(koboldai_vars.gpu_device)
+                model = model.to(memory_format=torch.channels_last)
+            model = model.half().to(koboldai_vars.gpu_device)
         else:
             model = model.to('cpu').float()
         generator = model.generate
@@ -1162,9 +1161,8 @@ def move_model_to_devices(model):
         generator = model.generate
         return
     if args.torch_channels_last:
-        model.half().to(memory_format=torch.channels_last)
-    else:
-        model.half()
+        model = model.to(memory_format=torch.channels_last)
+    model.half()
     gc.collect()
 
     if(hasattr(model, "transformer")):
@@ -3128,9 +3126,8 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 # Is CUDA available? If so, use GPU, otherwise fall back to CPU
                 if(koboldai_vars.hascuda and koboldai_vars.usegpu):
                     if args.torch_channels_last:
-                        model = model.half().to(memory_format=torch.channels_last).to(koboldai_vars.gpu_device)
-                    else:
-                        model = model.half().to(koboldai_vars.gpu_device)
+                        model = model.to(memory_format=torch.channels_last)
+                    model = model.half().to(koboldai_vars.gpu_device)
                     generator = model.generate
                 else:
                     model = model.to('cpu').float()
@@ -3275,9 +3272,8 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                     if(koboldai_vars.usegpu):
                         koboldai_vars.modeldim = get_hidden_size_from_model(model)
                         if args.torch_channels_last:
-                            model = model.half().to(memory_format=torch.channels_last).to(koboldai_vars.gpu_device)
-                        else:
-                            model = model.half().to(koboldai_vars.gpu_device)
+                            model = model.to(memory_format=torch.channels_last)
+                        model = model.half().to(koboldai_vars.gpu_device)
                         generator = model.generate
                     elif(koboldai_vars.breakmodel):  # Use both RAM and VRAM (breakmodel)
                         koboldai_vars.modeldim = get_hidden_size_from_model(model)
