@@ -25,7 +25,7 @@ dependencies:
   - psutil
   - pip:
     - --extra-index-url https://developer.intel.com/ipex-whl-stable-xpu  
-    - torch==1.13.0a0
+    - torch==1.13.0a0+git6c9b55e
     - intel_extension_for_pytorch==1.13.120+xpu
     - flask-cloudflared==0.0.10
     - flask-ngrok
