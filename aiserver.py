@@ -73,9 +73,8 @@ from utils import debounce
 import utils
 import koboldai_settings
 import torch
-import intel_extension_for_pytorch as ipex
 try:
-    pass
+    import intel_extension_for_pytorch as ipex
 except:
     if use_ipex:
         print("Failed to import IPEX")
