@@ -1131,6 +1131,8 @@ def move_model_to_devices(model):
         if(koboldai_vars.usegpu):
             if args.torch_channels_last:
                 model = model.to(memory_format=torch.channels_last)
+            if args.ipex_optimize:
+                model = ipex.optimize(model, dtype=torch.float16)
             model = model.half().to(koboldai_vars.gpu_device)
         else:
             model = model.to('cpu').float()
@@ -1162,6 +1164,8 @@ def move_model_to_devices(model):
         return
     if args.torch_channels_last:
         model = model.to(memory_format=torch.channels_last)
+    if args.ipex_optimize:
+        model = ipex.optimize(model, dtype=torch.float16)
     model.half()
     gc.collect()
 
@@ -1521,8 +1525,9 @@ def general_startup(override_args=None):
     parser.add_argument("--req_model", type=str, action='append', required=False, help="Which models which we allow to generate for us during cluster mode. Can be specified multiple times.")
     parser.add_argument("--revision", help="Specify the model revision for huggingface models (can be a git branch/tag name or a git commit hash)")
     parser.add_argument("--cpu", action='store_true', help="By default unattended launches are on the GPU use this option to force CPU usage.")
-    parser.add_argument("--ipex", action='store_true', help="Use Intel Extension for PyTorch")
+    parser.add_argument("--ipex", action='store_true', help="Use Intel Extension for PyTorch.")
     parser.add_argument("--ipex_amp", action='store_true', help="Use Intel Auto Mixed Precision.")
+    parser.add_argument("--ipex_optimize", action='store_true', help="Use Intel Optimizer. Needs a CPU with AVX512 support.")
     parser.add_argument("--torch_channels_last", action='store_true', help="Use torch.channels_last format.")
     parser.add_argument("--breakmodel", action='store_true', help=argparse.SUPPRESS)
     parser.add_argument("--breakmodel_layers", type=int, help=argparse.SUPPRESS)
@@ -3127,6 +3132,8 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                 if(koboldai_vars.hascuda and koboldai_vars.usegpu):
                     if args.torch_channels_last:
                         model = model.to(memory_format=torch.channels_last)
+                    if args.ipex_optimize:
+                        model = ipex.optimize(model, dtype=torch.float16)
                     model = model.half().to(koboldai_vars.gpu_device)
                     generator = model.generate
                 else:
@@ -3273,6 +3280,8 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
                         koboldai_vars.modeldim = get_hidden_size_from_model(model)
                         if args.torch_channels_last:
                             model = model.to(memory_format=torch.channels_last)
+                        if args.ipex_optimize:
+                            model = ipex.optimize(model, dtype=torch.float16)
                         model = model.half().to(koboldai_vars.gpu_device)
                         generator = model.generate
                     elif(koboldai_vars.breakmodel):  # Use both RAM and VRAM (breakmodel)
