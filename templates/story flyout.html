@@ -34,7 +34,7 @@
 			<div class="help_text">
 				Uses vectors to find similar sentences in the game text to add to memory
 			</div>
-			<button class="settings_button" onclick="document.getElementById('vector_memory').value = 'Generating...';socket.emit('calc_vector_memory', {});">Generate</button>
+			<button class="settings_button" onclick="socket.emit('calc_vector_memory', {});">Generate</button>
 			<textarea rows=20 id="vector_memory" class="var_sync_story_vector_memory fullwidth" oninput="autoResize(this)" autocomplete="off"></textarea>
 		</div>
 		<div class="setting_tile_area wi_settings">

@@ -8723,7 +8723,6 @@ def UI_2_submit(data):
         koboldai_vars.lua_koboldbridge.feedback = None
         koboldai_vars.recentrng = koboldai_vars.recentrngm = None
         
-        calc_vector_memory(new_action=data['data'])
         
         if koboldai_vars.actions.action_count == -1:
             actionsubmit(data['data'], actionmode=koboldai_vars.actionmode)
@@ -8737,6 +8736,7 @@ def UI_2_submit(data):
 @socketio.on('calc_vector_memory')
 @logger.catch
 def calc_vector_memory(new_text):
+    koboldai_vars.vector_memory = "Generating..."
     ######################################### Get Action Text by Sentence ########################################################
     action_text_split = koboldai_vars.actions.to_sentences(submitted_text=new_text)
     
