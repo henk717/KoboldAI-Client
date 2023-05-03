@@ -6,10 +6,6 @@ from typing import List, Optional, Union
 from logger import logger
 
 import torch
-try:
-    import intel_extension_for_pytorch as ipex
-except:
-    pass
 import numpy as np
 import transformers
 from transformers import (

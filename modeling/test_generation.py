@@ -1,9 +1,4 @@
 import torch
-try:
-    import intel_extension_for_pytorch as ipex
-except:
-    pass
-
 # We have to go through aiserver to initalize koboldai_vars :(
 from aiserver import koboldai_vars
 

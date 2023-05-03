@@ -578,10 +578,6 @@ def get_sharded_checkpoint_num_tensors(pretrained_model_name_or_path, filename, 
 
     # Torch
     import torch
-    try:
-        import intel_extension_for_pytorch as ipex
-    except:
-        pass
     return list(itertools.chain(*(torch.load(p, map_location="cpu").keys() for p in shard_paths)))
 
 #==================================================================#

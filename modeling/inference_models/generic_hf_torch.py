@@ -3,10 +3,6 @@ from __future__ import annotations
 import os
 import json
 import torch
-try:
-    import intel_extension_for_pytorch as ipex
-except:
-    pass
 import shutil
 from typing import Union
 

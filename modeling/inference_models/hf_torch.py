@@ -13,10 +13,6 @@ from tqdm.auto import tqdm
 from typing import Dict, List, Optional, Union
 
 import torch
-try:
-    import intel_extension_for_pytorch as ipex
-except:
-    pass
 from torch.nn import Embedding
 import transformers
 from transformers import (

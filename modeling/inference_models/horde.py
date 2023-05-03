@@ -2,10 +2,6 @@ from __future__ import annotations
 
 import time
 import torch
-try:
-    import intel_extension_for_pytorch as ipex
-except:
-    pass
 import requests
 import numpy as np
 from typing import List, Optional, Union

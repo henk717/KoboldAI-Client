@@ -2,10 +2,6 @@ from __future__ import annotations
 
 from typing import Dict, List
 import torch
-try:
-    import intel_extension_for_pytorch as ipex
-except:
-    pass
 from torch.nn import functional as F
 
 import utils

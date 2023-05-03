@@ -50,10 +50,6 @@ import itertools
 import zipfile
 import pickle
 import torch
-try:
-    import intel_extension_for_pytorch as ipex
-except:
-    pass
 import numpy as np
 import collections
 import _codecs

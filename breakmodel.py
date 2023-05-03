@@ -212,10 +212,6 @@ Copyright 2018, 2022 The Hugging Face team
 
 
 import torch
-try:
-    import intel_extension_for_pytorch as ipex
-except:
-    pass
 from torch import nn
 import torch.cuda.comm
 import copy

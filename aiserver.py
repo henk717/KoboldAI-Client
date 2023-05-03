@@ -66,10 +66,6 @@ from utils import debounce
 import utils
 import koboldai_settings
 import torch
-try:
-    import intel_extension_for_pytorch as ipex
-except:
-    pass
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, AutoModelForTokenClassification
 import transformers
 import ipaddress
@@ -1482,7 +1478,8 @@ def general_startup(override_args=None):
         koboldai_vars.use_colab_tpu = False
 
     if args.use_ipex:
-        os.environ['IPEX'] = str(1)
+        os.environ['IPEX'] = str(1)       
+        import intel_extension_for_pytorch as ipex
     else:
         os.environ['IPEX'] = str(0)
 
