@@ -284,9 +284,7 @@ def dispatch_model_ex(
             called directly during the forward, for instance if a `dense` linear layer is registered, but at forward,
             `dense.weight` and `dense.bias` are used in some operations instead of calling `dense` directly.
     """
-    if utils.args.use_ipex:
-        pass
-    elif main_device != "cpu":
+    if main_device != "cpu":
         return dispatch_model(model, device_map, main_device, state_dict, offload_dir=offload_dir, offload_buffers=offload_buffers, **kwargs)
 
     # Error early if the device map is incomplete.

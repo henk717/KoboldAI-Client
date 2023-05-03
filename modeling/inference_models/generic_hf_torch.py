@@ -246,8 +246,6 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
         self.patch_embedding()
 
         if utils.koboldai_vars.hascuda:
-            if utils.args.use_ipex:
-                utils.koboldai_vars.gpu_device = "xpu"
             if utils.koboldai_vars.usegpu:
                 # Use just VRAM
                 if utils.args.use_channels_last:
