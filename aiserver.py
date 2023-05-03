@@ -1481,6 +1481,11 @@ def general_startup(override_args=None):
     if args.cpu:
         koboldai_vars.use_colab_tpu = False
 
+    if args.use_ipex:
+        os.environ['IPEX'] = str(1)
+    else:
+        os.environ['IPEX'] = str(0)
+
     koboldai_vars.smandelete = koboldai_vars.host == args.override_delete
     koboldai_vars.smanrename = koboldai_vars.host == args.override_rename
 

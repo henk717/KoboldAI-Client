@@ -1234,7 +1234,11 @@ class system_settings(settings):
         self.userscripts = []     # List of userscripts to load
         self.last_userscripts = []  # List of previous userscript filenames from the previous time userscripts were send via usstatitems
         self.corescript  = "default.lua"  # Filename of corescript to load
-        self.gpu_device  = 0      # Which PyTorch device to use when using pure GPU generation
+        if 'IPEX' in os.environ:
+            if os.environ['IPEX']:
+                self.gpu_device  = "xpu"
+        else:
+            self.gpu_device  = 0      # Which PyTorch device to use when using pure GPU generation
         self.savedir     = os.getcwd()+"\\stories"
         self.hascuda     = False  # Whether torch has detected CUDA on the system
         self.usegpu      = False  # Whether to launch pipeline with GPU support
