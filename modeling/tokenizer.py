@@ -1,6 +1,10 @@
 from typing import Any, List, Union
 from tokenizers import Tokenizer
 import torch
+try:
+    import intel_extension_for_pytorch as ipex
+except:
+    pass
 from transformers import PreTrainedTokenizer
 
 

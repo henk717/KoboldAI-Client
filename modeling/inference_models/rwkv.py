@@ -11,6 +11,10 @@ from tqdm import tqdm
 from huggingface_hub import hf_hub_url
 
 import torch
+try:
+    import intel_extension_for_pytorch as ipex
+except:
+    pass
 from torch.nn import functional as F
 
 # Must be defined before import
@@ -145,7 +149,10 @@ class RWKVInferenceModel(InferenceModel):
         # Now we load!
 
         # TODO: Breakmodel to strat
-        self.model = RWKV(model=model_path, strategy="cuda:0 fp16")
+        if utils.args.use_ipex:
+            self.model = RWKV(model=model_path, strategy="xpu fp16")
+        else:
+            self.model = RWKV(model=model_path, strategy="cuda:0 fp16")
 
     def _apply_warpers(
         self, scores: torch.Tensor, input_ids: torch.Tensor

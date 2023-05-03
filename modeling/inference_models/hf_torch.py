@@ -13,6 +13,10 @@ from tqdm.auto import tqdm
 from typing import Dict, List, Optional, Union
 
 import torch
+try:
+    import intel_extension_for_pytorch as ipex
+except:
+    pass
 from torch.nn import Embedding
 import transformers
 from transformers import (
@@ -439,7 +443,9 @@ class HFTorchInferenceModel(HFInferenceModel):
                     original_key.startswith(n) for n in utils.layers_module_names
                 ):
                     device_map[key] = (
-                        utils.koboldai_vars.gpu_device
+                        "xpu"
+                        if utils.args.use_ipex
+                        else utils.koboldai_vars.gpu_device
                         if utils.koboldai_vars.hascuda and utils.koboldai_vars.usegpu
                         else "cpu"
                         if not utils.koboldai_vars.hascuda
@@ -458,7 +464,9 @@ class HFTorchInferenceModel(HFInferenceModel):
                         ).rsplit(".", 1)[1]
                     )
                     device = (
-                        utils.koboldai_vars.gpu_device
+                        "xpu"
+                        if utils.args.use_ipex
+                        else utils.koboldai_vars.gpu_device
                         if utils.koboldai_vars.hascuda and utils.koboldai_vars.usegpu
                         else "disk"
                         if layer < disk_blocks and layer < ram_blocks
@@ -779,7 +787,10 @@ class HFTorchInferenceModel(HFInferenceModel):
     def breakmodel_device_list(self, n_layers, primary=None, selected=None):
         # TODO: Find a better place for this or rework this
 
-        device_count = torch.cuda.device_count()
+        if utils.args.use_ipex:
+            device_count = torch.xpu.device_count()
+        else:
+            device_count = torch.cuda.device_count()
         if device_count < 2:
             primary = None
         gpu_blocks = breakmodel.gpu_blocks + (
@@ -787,7 +798,10 @@ class HFTorchInferenceModel(HFInferenceModel):
         ) * [0]
         print(f"{Colors.YELLOW}       DEVICE ID  |  LAYERS  |  DEVICE NAME{Colors.END}")
         for i in range(device_count):
-            name = torch.cuda.get_device_name(i)
+            if utils.args.use_ipex:
+                name = torch.xpu.get_device_name(i)
+            else:
+                name = torch.cuda.get_device_name(i)
             if len(name) > 47:
                 name = "..." + name[-44:]
             row_color = Colors.END
@@ -827,7 +841,10 @@ class HFTorchInferenceModel(HFInferenceModel):
                     breakmodel.gpu_blocks = list(
                         map(int, utils.args.breakmodel_gpulayers.split(","))
                     )
-                assert len(breakmodel.gpu_blocks) <= torch.cuda.device_count()
+                if utils.args.use_ipex:
+                    assert len(breakmodel.gpu_blocks) <= torch.xpu.device_count()
+                else:
+                    assert len(breakmodel.gpu_blocks) <= torch.cuda.device_count()
                 s = n_layers
                 for i in range(len(breakmodel.gpu_blocks)):
                     if breakmodel.gpu_blocks[i] <= -1:
@@ -857,7 +874,10 @@ class HFTorchInferenceModel(HFInferenceModel):
             breakmodel.gpu_blocks = [n_layers]
             n_layers = 0
         else:
-            device_count = torch.cuda.device_count()
+            if utils.args.use_ipex:
+                device_count = torch.xpu.device_count()
+            else:
+                device_count = torch.cuda.device_count()
             if device_count > 1:
                 print(
                     Colors.CYAN
@@ -874,12 +894,17 @@ class HFTorchInferenceModel(HFInferenceModel):
                         primaryselect.isnumeric()
                         and 0 <= int(primaryselect) < device_count
                     ):
-                        breakmodel.primary_device = int(primaryselect)
+                        if utils.args.use_ipex:
+                            breakmodel.primary_device = torch.xpu.device(int(primaryselect))
+                        else:
+                            breakmodel.primary_device = int(primaryselect)
                         break
                     else:
                         print(
                             f"{Colors.RED}Please enter an integer between 0 and {device_count-1}.{Colors.END}"
                         )
+            elif utils.args.use_ipex:
+                breakmodel.primary_device = "xpu"
             else:
                 breakmodel.primary_device = 0
 
@@ -961,7 +986,10 @@ class HFTorchInferenceModel(HFInferenceModel):
         ):
             utils.koboldai_vars.breakmodel = False
             utils.koboldai_vars.usegpu = True
-            utils.koboldai_vars.gpu_device = len(breakmodel.gpu_blocks) - 1
+            if utils.args.use_ipex:
+                utils.koboldai_vars.gpu_device = "xpu"
+            else:
+                utils.koboldai_vars.gpu_device = len(breakmodel.gpu_blocks) - 1
             return
 
         if not breakmodel.gpu_blocks:

@@ -50,6 +50,10 @@ import itertools
 import zipfile
 import pickle
 import torch
+try:
+    import intel_extension_for_pytorch as ipex
+except:
+    pass
 import numpy as np
 import collections
 import _codecs
@@ -402,7 +406,10 @@ def patch_safetensors(callback):
             # (70 tensors/s -> 65 tensor/s). The memory savings probably
             # shouldn't be the happening, maybe there's a memory leak
             # somewhere in our pipeline with CPU tensors.
-            intermediary_device = "cuda"
+            if utils.args.use_ipex:
+                intermediary_device = "xpu"
+            else:
+                intermediary_device = "cuda"
         else:
             intermediary_device = "cpu"
 

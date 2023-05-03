@@ -66,6 +66,10 @@ from utils import debounce
 import utils
 import koboldai_settings
 import torch
+try:
+    import intel_extension_for_pytorch as ipex
+except:
+    pass
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, AutoModelForTokenClassification
 import transformers
 import ipaddress
@@ -1325,6 +1329,9 @@ def general_startup(override_args=None):
     parser.add_argument("--req_model", type=str, action='append', required=False, help="Which models which we allow to generate for us during cluster mode. Can be specified multiple times.")
     parser.add_argument("--revision", help="Specify the model revision for huggingface models (can be a git branch/tag name or a git commit hash)")
     parser.add_argument("--cpu", action='store_true', help="By default unattended launches are on the GPU use this option to force CPU usage.")
+    parser.add_argument("--use-ipex", action='store_true', help="Use Intel OneAPI XPU backend for PyTorch.")
+    parser.add_argument("--use-ipex-optimize", action='store_true', help="Use IPEX optimizer function.")
+    parser.add_argument("--use-channels-last", action='store_true', help="Use torch.channels_last format.")
     parser.add_argument("--breakmodel", action='store_true', help=argparse.SUPPRESS)
     parser.add_argument("--breakmodel_layers", type=int, help=argparse.SUPPRESS)
     parser.add_argument("--breakmodel_gpulayers", type=str, help="If using a model that supports hybrid generation, this is a comma-separated list that specifies how many layers to put on each GPU device. For example to put 8 layers on device 0, 9 layers on device 1 and 11 layers on device 2, use --breakmodel_gpulayers 8,9,11")
@@ -1522,12 +1529,18 @@ def get_model_info(model, directory=""):
     models_on_url = False
     multi_online_models = False
     show_online_model_select=False
-    gpu_count = torch.cuda.device_count()
+    if args.use_ipex:
+        gpu_count = torch.xpu.device_count()
+    else:
+        gpu_count = torch.cuda.device_count()
     gpu_names = []
     send_horde_models = False
     show_custom_model_box = False
     for i in range(gpu_count):
-        gpu_names.append(torch.cuda.get_device_name(i))
+        if args.use_ipex:
+            gpu_names.append(torch.xpu.get_device_name(i))
+        else:
+            gpu_names.append(torch.cuda.get_device_name(i))
     if model in ['Colab', 'API']:
         url = True
     elif model == 'CLUSTER':
@@ -1769,7 +1782,10 @@ def unload_model():
     gc.collect()
     try:
         with torch.no_grad():
-            torch.cuda.empty_cache()
+            if args.use_ipex:
+                torch.xpu.empty_cache()
+            else:
+                torch.cuda.empty_cache()
     except:
         pass
         
@@ -1867,7 +1883,10 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         # loadmodelsettings()
         # loadsettings()
         logger.init("GPU support", status="Searching")
-        koboldai_vars.hascuda = torch.cuda.is_available() and not args.cpu
+        if args.use_ipex:
+            koboldai_vars.hascuda = torch.xpu.is_available() and not args.cpu
+        else:
+            koboldai_vars.hascuda = torch.cuda.is_available() and not args.cpu
         koboldai_vars.bmsupported = ((koboldai_vars.model_type != 'gpt2') or koboldai_vars.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not koboldai_vars.nobreakmodel
         if(args.breakmodel is not None and args.breakmodel):
             logger.warning("--breakmodel is no longer supported. Breakmodel mode is now automatically enabled when --breakmodel_gpulayers is used (see --help for details).")
@@ -3654,7 +3673,10 @@ def apiactionsubmit_generate(txt, minimum, maximum):
     # Clear CUDA cache if using GPU
     if(koboldai_vars.hascuda and (koboldai_vars.usegpu or koboldai_vars.breakmodel)):
         gc.collect()
-        torch.cuda.empty_cache()
+        if args.use_ipex:
+            torch.xpu.empty_cache()
+        else:
+            torch.cuda.empty_cache()
 
     # Submit input text to generator
     _genout, already_generated = tpool.execute(model.core_generate, txt, set())
@@ -3665,7 +3687,10 @@ def apiactionsubmit_generate(txt, minimum, maximum):
     if(koboldai_vars.hascuda and (koboldai_vars.usegpu or koboldai_vars.breakmodel)):
         del _genout
         gc.collect()
-        torch.cuda.empty_cache()
+        if args.use_ipex:
+            torch.xpu.empty_cache()
+        else:
+            torch.cuda.empty_cache()
 
     return genout
 
@@ -4085,7 +4110,10 @@ def generate(txt, minimum, maximum, found_entries=None):
     # Clear CUDA cache if using GPU
     if(koboldai_vars.hascuda and (koboldai_vars.usegpu or koboldai_vars.breakmodel)):
         gc.collect()
-        torch.cuda.empty_cache()
+        if args.use_ipex:
+            torch.xpu.empty_cache()
+        else:
+            torch.cuda.empty_cache()
 
     # Submit input text to generator
     try:
@@ -4136,7 +4164,10 @@ def generate(txt, minimum, maximum, found_entries=None):
     if(koboldai_vars.hascuda and (koboldai_vars.usegpu or koboldai_vars.breakmodel)):
         del genout
         gc.collect()
-        torch.cuda.empty_cache()
+        if args.use_ipex:
+            torch.xpu.empty_cache()
+        else:
+            torch.cuda.empty_cache()
     
     maybe_review_story()
 
@@ -7488,12 +7519,20 @@ def generate_image(prompt: str) -> Optional[Image.Image]:
         # If we don't have a GPU, use horde if we're allowed to
         return text2img_horde(prompt)
 
-    memory = torch.cuda.get_device_properties(0).total_memory
+    if args.use_ipex:
+        memory = torch.xpu.get_device_properties("xpu").total_memory
+    else:
+        memory = torch.cuda.get_device_properties(0).total_memory
 
     # We aren't being forced to use horde, so now let's figure out if we should use local
-    if memory - torch.cuda.memory_reserved(0) >= 6000000000:
-        # We have enough vram, just do it locally
-        return text2img_local(prompt)
+    if args.use_ipex:
+        memory_reserved =  torch.xpu.memory_reserved("xpu")
+    else:
+        memory_reserved = torch.cuda.memory_reserved(0)
+
+    if memory - memory_reserved >= 6000000000:
+            # We have enough vram, just do it locally
+            return text2img_local(prompt)
     elif memory > 6000000000 and koboldai_vars.img_gen_priority <= 1:
         # We could do it locally by swapping the model out
         print("Could do local or online")
@@ -7512,14 +7551,21 @@ def text2img_local(prompt: str) -> Optional[Image.Image]:
     if koboldai_vars.image_pipeline is None:
         pipe = tpool.execute(StableDiffusionPipeline.from_pretrained, "CompVis/stable-diffusion-v1-4", revision="fp16", torch_dtype=torch.float16, cache="functional_models/stable-diffusion").to("cuda")
     else:
-        pipe = koboldai_vars.image_pipeline.to("cuda")
+        if args.use_ipex:
+            pipe = koboldai_vars.image_pipeline.to("xpu")
+        else:
+            pipe = koboldai_vars.image_pipeline.to("cuda")
     logger.debug("time to load: {}".format(time.time() - start_time))
     start_time = time.time()
     
     def get_image(pipe, prompt, num_inference_steps):
-        from torch import autocast
-        with autocast("cuda"):
-            return pipe(prompt, num_inference_steps=num_inference_steps).images[0]
+        if args.use_ipex:
+            with torch.xpu.amp.autocast(enabled=True, dtype=torch.float16, cache_enabled=False):
+                return pipe(prompt, num_inference_steps=num_inference_steps).images[0]
+        else:
+            from torch import autocast
+            with autocast("cuda"):
+                return pipe(prompt, num_inference_steps=num_inference_steps).images[0]
     image = tpool.execute(get_image, pipe, prompt, num_inference_steps=koboldai_vars.img_gen_steps)
     logger.debug("time to generate: {}".format(time.time() - start_time))
     start_time = time.time()
@@ -7530,7 +7576,10 @@ def text2img_local(prompt: str) -> Optional[Image.Image]:
     else:
         koboldai_vars.image_pipeline = None
         del pipe
-    torch.cuda.empty_cache()
+    if args.use_ipex:
+        torch.xpu.empty_cache()
+    else:
+        torch.cuda.empty_cache()
     logger.debug("time to unload: {}".format(time.time() - start_time))
     return image
 
@@ -7774,7 +7823,11 @@ def summarize(text, max_length=100, min_length=30, unload=True):
             koboldai_vars.summarizer.save_pretrained("functional_models/{}".format(args.summarizer_model.replace('/', '_')), max_shard_size="500MiB")
 
     #Try GPU accel
-    if koboldai_vars.hascuda and torch.cuda.get_device_properties(0).total_memory - torch.cuda.memory_reserved(0) >= 1645778560:
+    if args.use_ipex:
+        if koboldai_vars.hascuda and torch.xpu.get_device_properties("xpu").total_memory - torch.xpu.memory_reserved("xpu") >= 1645778560:
+            koboldai_vars.summarizer.to("xpu")
+            device="xpu"
+    elif koboldai_vars.hascuda and torch.cuda.get_device_properties(0).total_memory - torch.cuda.memory_reserved(0) >= 1645778560:
         koboldai_vars.summarizer.to(0)
         device=0
     else:
@@ -7790,11 +7843,17 @@ def summarize(text, max_length=100, min_length=30, unload=True):
     output = tpool.execute(summarizer, text, max_length=max_length, min_length=min_length, do_sample=False)[0]['summary_text']
     logger.debug("Time to summarize: {}".format(time.time()-start_time))
     #move model back to CPU to save precious vram
-    torch.cuda.empty_cache()
+    if args.use_ipex:
+        torch.xpu.empty_cache()
+    else:
+        torch.cuda.empty_cache()
     logger.debug("VRAM used by summarization: {}".format(torch.cuda.memory_reserved(0)))
     if unload:
         koboldai_vars.summarizer.to("cpu")
-    torch.cuda.empty_cache()
+    if args.use_ipex:
+        torch.xpu.empty_cache()
+    else:
+        torch.cuda.empty_cache()
     
     #logger.debug("Original Text: {}".format(text))
     #logger.debug("Summarized Text: {}".format(output))
@@ -10753,6 +10812,10 @@ def put_config_sampler_seed(body: SamplerSeedSettingSchema):
         tpu_mtj_backend.set_rng_seed(body.value)
     else:
         import torch
+        try:
+            import intel_extension_for_pytorch as ipex
+        except:
+            pass
         torch.manual_seed(body.value)
     koboldai_vars.seed = body.value
     return {}

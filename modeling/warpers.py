@@ -40,6 +40,10 @@ from __future__ import annotations
 
 import utils
 import torch
+try:
+    import intel_extension_for_pytorch as ipex
+except:
+    pass
 import numpy as np
 
 if utils.koboldai_vars.use_colab_tpu:
