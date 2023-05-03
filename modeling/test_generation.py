@@ -1,4 +1,5 @@
 import torch
+
 # We have to go through aiserver to initalize koboldai_vars :(
 from aiserver import koboldai_vars
 
