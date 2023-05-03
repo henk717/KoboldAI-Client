@@ -129,7 +129,13 @@ The easiest way for Windows users is to use the [offline installer](https://sour
 
 1.  Clone the URL of this Github repository (For example git clone [https://github.com/koboldai/koboldai-client](https://github.com/koboldai/koboldai-client) )
 2.  AMD user? Make sure ROCm is installed if you want GPU support. Is yours not compatible with ROCm? Follow the usual instructions.
-3.  Run play.sh or if your AMD GPU supports ROCm use play-rocm.sh
+    
+    Intel user? Make sure oneAPI is installed if you want GPU support.
+3.  Run play.sh for NVIDIA GPU with CUDA. 
+
+    Run play-rocm.sh for AMD GPU with ROCm.
+
+    Run play-oneapi.sh for INTEL GPU with oneAPI.
 
 KoboldAI will now automatically configure its dependencies and start up, everything is contained in its own conda runtime so we will not clutter your system. The files will be located in the runtime subfolder. If at any point you wish to force a reinstallation of the runtime you can do so with the install\_requirements.sh file. While you can run this manually it is not neccesary.
 
@@ -147,6 +153,17 @@ If you would like to manually install KoboldAI you will need some python/conda p
 ### AMD GPU's (Linux only)
 
 AMD GPU's have terrible compute support, this will currently not work on Windows and will only work for a select few Linux GPU's. [You can find a list of the compatible GPU's here](https://github.com/RadeonOpenCompute/ROCm#Hardware-and-Software-Support). Any GPU that is not listed is guaranteed not to work with KoboldAI and we will not be able to provide proper support on GPU's that are not compatible with the versions of ROCm we require. Make sure to first install ROCm on your Linux system using a guide for your distribution, after that you can follow the usual linux instructions above.
+
+### Intel ARC GPU's (Linux only)
+
+Should also work under WSL2.
+
+For Arch Linux:
+Install `intel-oneapi-basekit` `intel-compute-runtime-bin` `intel-graphics-compiler-bin` from AUR.
+
+For Ubuntu:
+Install Intel ARC Drivers & Intel oneAPI Base Toolkit & Intel Compute Runtime & Intel Graphics Runtime.
+There are no easy packages available for Ubuntu. Download and install them from Intel's website.
 
 ### Troubleshooting
 
