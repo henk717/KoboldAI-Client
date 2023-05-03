@@ -1237,6 +1237,8 @@ class system_settings(settings):
         if 'IPEX' in os.environ:
             if os.environ['IPEX']:
                 self.gpu_device  = "xpu"
+            else:
+                self.gpu_device  = 0
         else:
             self.gpu_device  = 0      # Which PyTorch device to use when using pure GPU generation
         self.savedir     = os.getcwd()+"\\stories"
