@@ -10813,11 +10813,6 @@ def put_config_sampler_seed(body: SamplerSeedSettingSchema):
         tpu_mtj_backend.socketio = socketio
         tpu_mtj_backend.set_rng_seed(body.value)
     else:
-        import torch
-        try:
-            import intel_extension_for_pytorch as ipex
-        except:
-            pass
         torch.manual_seed(body.value)
     koboldai_vars.seed = body.value
     return {}
