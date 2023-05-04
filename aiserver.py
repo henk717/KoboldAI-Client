@@ -10813,6 +10813,7 @@ def put_config_sampler_seed(body: SamplerSeedSettingSchema):
         tpu_mtj_backend.socketio = socketio
         tpu_mtj_backend.set_rng_seed(body.value)
     else:
+        import torch
         torch.manual_seed(body.value)
     koboldai_vars.seed = body.value
     return {}
