@@ -34,7 +34,6 @@ dependencies:
     - transformers==4.28.0
     - huggingface_hub==0.12.1
     - safetensors==0.3.1
-    - accelerate==0.18.0
     - git+https://github.com/VE-FORBRYDERNE/mkultra
     - ansi2html
     - flask_compress
@@ -42,4 +41,6 @@ dependencies:
     - ftfy
     - pydub
     - diffusers
-    - peft==0.3.0
+    - numpy>=1.17       #peft and accelerate
+    - packaging>=20.0   #peft and accelerate
+    - pyyaml            #peft and accelerate
