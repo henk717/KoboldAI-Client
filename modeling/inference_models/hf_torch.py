@@ -479,9 +479,7 @@ class HFTorchInferenceModel(HFInferenceModel):
                     original_key.startswith(n) for n in utils.layers_module_names
                 ):
                     device_map[key] = (
-                        "xpu"
-                        if utils.args.use_ipex
-                        else utils.koboldai_vars.gpu_device
+                        utils.koboldai_vars.gpu_device
                         if utils.koboldai_vars.hascuda and utils.koboldai_vars.usegpu
                         else "cpu"
                         if not utils.koboldai_vars.hascuda
@@ -500,9 +498,7 @@ class HFTorchInferenceModel(HFInferenceModel):
                         ).rsplit(".", 1)[1]
                     )
                     device = (
-                        "xpu"
-                        if utils.args.use_ipex
-                        else utils.koboldai_vars.gpu_device
+                        utils.koboldai_vars.gpu_device
                         if utils.koboldai_vars.hascuda and utils.koboldai_vars.usegpu
                         else "disk"
                         if layer < disk_blocks and layer < ram_blocks
