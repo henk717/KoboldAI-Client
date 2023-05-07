@@ -12,6 +12,11 @@ from collections import OrderedDict
 import multiprocessing
 from logger import logger
 import torch
+try:
+    import intel_extension_for_pytorch
+    use_ipex = True
+except:
+    use_ipex = False
 import numpy as np
 import random
 import inspect
@@ -1234,7 +1239,7 @@ class system_settings(settings):
         self.userscripts = []     # List of userscripts to load
         self.last_userscripts = []  # List of previous userscript filenames from the previous time userscripts were send via usstatitems
         self.corescript  = "default.lua"  # Filename of corescript to load
-        if os.environ['IPEX']:
+        if use_ipex:
             self.gpu_device  = "xpu"
         else:
             self.gpu_device  = 0      # Which PyTorch device to use when using pure GPU generation
