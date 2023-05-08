@@ -12,13 +12,12 @@ dependencies:
   - markdown
   - bleach=4.1.0
   - pip
-  - pytorch
-  - cpuonly
   - marshmallow>=3.13
   - apispec-webframeworks
   - loguru
   - Pillow
   - pip:
+    - pytorch
     - flask-cors
     - lupa==1.10
     - transformers
