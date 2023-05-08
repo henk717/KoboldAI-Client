@@ -17,7 +17,7 @@ dependencies:
   - loguru
   - Pillow
   - pip:
-    - pytorch
+    - torch
     - flask-cors
     - lupa==1.10
     - transformers
