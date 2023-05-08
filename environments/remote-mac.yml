@@ -20,7 +20,9 @@ dependencies:
   - pip:
     - flask-cors
     - lupa==1.10
-    - transformers
+    - transformers==4.28.0
+    - flask-session
+    - python-socketio[client]
     - ansi2html
     - flask_compress
     - flask-session

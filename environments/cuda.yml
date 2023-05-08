@@ -41,6 +41,7 @@ dependencies:
     - python-socketio[client]
     - ansi2html
     - flask_compress
+    - flask-session
     - ijson
     - bitsandbytes
     - ftfy
