@@ -13,7 +13,7 @@ import multiprocessing
 from logger import logger
 import torch
 try:
-    import intel_extension_for_pytorch
+    import intel_extension_for_pytorch as ipex
     use_ipex = True
 except:
     use_ipex = False
@@ -1244,7 +1244,8 @@ class system_settings(settings):
         else:
             self.gpu_device  = 0      # Which PyTorch device to use when using pure GPU generation
         self.savedir     = os.getcwd()+"\\stories"
-        self.hascuda     = False  # Whether torch has detected CUDA on the system
+        self.hascuda     = False  # Whether torch has detected CUDA on the system. Treated as hasgpu when using XPU.
+        self.hasxpu     = use_ipex  # Whether torch has detected XPU on the system.
         self.usegpu      = False  # Whether to launch pipeline with GPU support
         self.splist      = []
         self.spselect    = ""     # Temporary storage for soft prompt filename to load

@@ -402,7 +402,7 @@ def patch_safetensors(callback):
             # (70 tensors/s -> 65 tensor/s). The memory savings probably
             # shouldn't be the happening, maybe there's a memory leak
             # somewhere in our pipeline with CPU tensors.
-            if utils.args.use_ipex:
+            if utils.koboldai_vars.hasxpu:
                 intermediary_device = "xpu"
             else:
                 intermediary_device = "cuda"

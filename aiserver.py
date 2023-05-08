@@ -1325,7 +1325,6 @@ def general_startup(override_args=None):
     parser.add_argument("--req_model", type=str, action='append', required=False, help="Which models which we allow to generate for us during cluster mode. Can be specified multiple times.")
     parser.add_argument("--revision", help="Specify the model revision for huggingface models (can be a git branch/tag name or a git commit hash)")
     parser.add_argument("--cpu", action='store_true', help="By default unattended launches are on the GPU use this option to force CPU usage.")
-    parser.add_argument("--use-ipex", action='store_true', help="Use Intel OneAPI XPU backend for PyTorch.")
     parser.add_argument("--use-ipex-optimize", action='store_true', help="Use IPEX optimizer function.")
     parser.add_argument("--use-channels-last", action='store_true', help="Use torch.channels_last format.")
     parser.add_argument("--breakmodel", action='store_true', help=argparse.SUPPRESS)
@@ -1484,9 +1483,8 @@ def general_startup(override_args=None):
     if args.cpu:
         koboldai_vars.use_colab_tpu = False
 
-    if koboldai_vars.gpu_device == "xpu":
+    if koboldai_vars.hasxpu:
         import intel_extension_for_pytorch as ipex
-        utils.args.use_ipex = True
 
     koboldai_vars.smandelete = koboldai_vars.host == args.override_delete
     koboldai_vars.smanrename = koboldai_vars.host == args.override_rename
@@ -1536,7 +1534,7 @@ def get_model_info(model, directory=""):
     models_on_url = False
     multi_online_models = False
     show_online_model_select=False
-    if args.use_ipex:
+    if koboldai_vars.hasxpu:
         gpu_count = torch.xpu.device_count()
     else:
         gpu_count = torch.cuda.device_count()
@@ -1544,7 +1542,7 @@ def get_model_info(model, directory=""):
     send_horde_models = False
     show_custom_model_box = False
     for i in range(gpu_count):
-        if args.use_ipex:
+        if koboldai_vars.hasxpu:
             gpu_names.append(torch.xpu.get_device_name(i))
         else:
             gpu_names.append(torch.cuda.get_device_name(i))
@@ -1789,7 +1787,7 @@ def unload_model():
     gc.collect()
     try:
         with torch.no_grad():
-            if args.use_ipex:
+            if koboldai_vars.hasxpu:
                 torch.xpu.empty_cache()
             else:
                 torch.cuda.empty_cache()
@@ -1890,7 +1888,7 @@ def load_model(use_gpu=True, gpu_layers=None, disk_layers=None, initial_load=Fal
         # loadmodelsettings()
         # loadsettings()
         logger.init("GPU support", status="Searching")
-        if args.use_ipex:
+        if koboldai_vars.hasxpu:
             koboldai_vars.hascuda = torch.xpu.is_available() and not args.cpu
         else:
             koboldai_vars.hascuda = torch.cuda.is_available() and not args.cpu
@@ -3680,7 +3678,7 @@ def apiactionsubmit_generate(txt, minimum, maximum):
     # Clear CUDA cache if using GPU
     if(koboldai_vars.hascuda and (koboldai_vars.usegpu or koboldai_vars.breakmodel)):
         gc.collect()
-        if args.use_ipex:
+        if koboldai_vars.hasxpu:
             torch.xpu.empty_cache()
         else:
             torch.cuda.empty_cache()
@@ -3694,7 +3692,7 @@ def apiactionsubmit_generate(txt, minimum, maximum):
     if(koboldai_vars.hascuda and (koboldai_vars.usegpu or koboldai_vars.breakmodel)):
         del _genout
         gc.collect()
-        if args.use_ipex:
+        if koboldai_vars.hasxpu:
             torch.xpu.empty_cache()
         else:
             torch.cuda.empty_cache()
@@ -4117,7 +4115,7 @@ def generate(txt, minimum, maximum, found_entries=None):
     # Clear CUDA cache if using GPU
     if(koboldai_vars.hascuda and (koboldai_vars.usegpu or koboldai_vars.breakmodel)):
         gc.collect()
-        if args.use_ipex:
+        if koboldai_vars.hasxpu:
             torch.xpu.empty_cache()
         else:
             torch.cuda.empty_cache()
@@ -4171,7 +4169,7 @@ def generate(txt, minimum, maximum, found_entries=None):
     if(koboldai_vars.hascuda and (koboldai_vars.usegpu or koboldai_vars.breakmodel)):
         del genout
         gc.collect()
-        if args.use_ipex:
+        if koboldai_vars.hasxpu:
             torch.xpu.empty_cache()
         else:
             torch.cuda.empty_cache()
@@ -7526,13 +7524,13 @@ def generate_image(prompt: str) -> Optional[Image.Image]:
         # If we don't have a GPU, use horde if we're allowed to
         return text2img_horde(prompt)
 
-    if args.use_ipex:
+    if koboldai_vars.hasxpu:
         memory = torch.xpu.get_device_properties("xpu").total_memory
     else:
         memory = torch.cuda.get_device_properties(0).total_memory
 
     # We aren't being forced to use horde, so now let's figure out if we should use local
-    if args.use_ipex:
+    if koboldai_vars.hasxpu:
         memory_reserved =  torch.xpu.memory_reserved("xpu")
     else:
         memory_reserved = torch.cuda.memory_reserved(0)
@@ -7558,7 +7556,7 @@ def text2img_local(prompt: str) -> Optional[Image.Image]:
     if koboldai_vars.image_pipeline is None:
         pipe = tpool.execute(StableDiffusionPipeline.from_pretrained, "CompVis/stable-diffusion-v1-4", revision="fp16", torch_dtype=torch.float16, cache="functional_models/stable-diffusion").to("cuda")
     else:
-        if args.use_ipex:
+        if koboldai_vars.hasxpu:
             pipe = koboldai_vars.image_pipeline.to("xpu")
         else:
             pipe = koboldai_vars.image_pipeline.to("cuda")
@@ -7566,7 +7564,7 @@ def text2img_local(prompt: str) -> Optional[Image.Image]:
     start_time = time.time()
     
     def get_image(pipe, prompt, num_inference_steps):
-        if args.use_ipex:
+        if koboldai_vars.hasxpu:
             with torch.xpu.amp.autocast(enabled=True, dtype=torch.float16, cache_enabled=False):
                 return pipe(prompt, num_inference_steps=num_inference_steps).images[0]
         else:
@@ -7583,7 +7581,7 @@ def text2img_local(prompt: str) -> Optional[Image.Image]:
     else:
         koboldai_vars.image_pipeline = None
         del pipe
-    if args.use_ipex:
+    if koboldai_vars.hasxpu:
         torch.xpu.empty_cache()
     else:
         torch.cuda.empty_cache()
@@ -7830,7 +7828,7 @@ def summarize(text, max_length=100, min_length=30, unload=True):
             koboldai_vars.summarizer.save_pretrained("functional_models/{}".format(args.summarizer_model.replace('/', '_')), max_shard_size="500MiB")
 
     #Try GPU accel
-    if args.use_ipex:
+    if koboldai_vars.hasxpu:
         if koboldai_vars.hascuda and torch.xpu.get_device_properties("xpu").total_memory - torch.xpu.memory_reserved("xpu") >= 1645778560:
             koboldai_vars.summarizer.to("xpu")
             device="xpu"
@@ -7850,14 +7848,14 @@ def summarize(text, max_length=100, min_length=30, unload=True):
     output = tpool.execute(summarizer, text, max_length=max_length, min_length=min_length, do_sample=False)[0]['summary_text']
     logger.debug("Time to summarize: {}".format(time.time()-start_time))
     #move model back to CPU to save precious vram
-    if args.use_ipex:
+    if koboldai_vars.hasxpu:
         torch.xpu.empty_cache()
     else:
         torch.cuda.empty_cache()
     logger.debug("VRAM used by summarization: {}".format(torch.cuda.memory_reserved(0)))
     if unload:
         koboldai_vars.summarizer.to("cpu")
-    if args.use_ipex:
+    if koboldai_vars.hasxpu:
         torch.xpu.empty_cache()
     else:
         torch.cuda.empty_cache()

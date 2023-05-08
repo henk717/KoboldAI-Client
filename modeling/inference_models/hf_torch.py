@@ -380,6 +380,8 @@ class HFTorchInferenceModel(HFInferenceModel):
                 if layer < ram_blocks
                 else bisect.bisect_right(cumulative_gpu_blocks, layer - ram_blocks)
             )
+            if utils.koboldai_vars.hasxpu and device == 0:
+                device = "xpu"
             device_map[name] = device
 
         for name in utils.get_missing_module_names(self.model, list(device_map.keys())):
@@ -474,7 +476,6 @@ class HFTorchInferenceModel(HFInferenceModel):
 
             for key, value in model_dict.items():
                 original_key = get_original_key(key)
-
                 if isinstance(value, lazy_loader.LazyTensor) and not any(
                     original_key.startswith(n) for n in utils.layers_module_names
                 ):
@@ -511,6 +512,8 @@ class HFTorchInferenceModel(HFInferenceModel):
                             cumulative_gpu_blocks, layer - ram_blocks
                         )
                     )
+                    if utils.koboldai_vars.hasxpu and device == 0:
+                        device = "xpu"
                     device_map[key] = device
 
             if utils.num_shards is None or utils.current_shard == 0:
@@ -819,7 +822,7 @@ class HFTorchInferenceModel(HFInferenceModel):
     def breakmodel_device_list(self, n_layers, primary=None, selected=None):
         # TODO: Find a better place for this or rework this
 
-        if utils.args.use_ipex:
+        if utils.koboldai_vars.hasxpu:
             device_count = torch.xpu.device_count()
         else:
             device_count = torch.cuda.device_count()
@@ -830,7 +833,7 @@ class HFTorchInferenceModel(HFInferenceModel):
         ) * [0]
         print(f"{Colors.YELLOW}       DEVICE ID  |  LAYERS  |  DEVICE NAME{Colors.END}")
         for i in range(device_count):
-            if utils.args.use_ipex:
+            if utils.koboldai_vars.hasxpu:
                 name = torch.xpu.get_device_name(i)
             else:
                 name = torch.cuda.get_device_name(i)
@@ -873,7 +876,7 @@ class HFTorchInferenceModel(HFInferenceModel):
                     breakmodel.gpu_blocks = list(
                         map(int, utils.args.breakmodel_gpulayers.split(","))
                     )
-                if utils.args.use_ipex:
+                if utils.koboldai_vars.hasxpu:
                     assert len(breakmodel.gpu_blocks) <= torch.xpu.device_count()
                 else:
                     assert len(breakmodel.gpu_blocks) <= torch.cuda.device_count()
@@ -906,7 +909,7 @@ class HFTorchInferenceModel(HFInferenceModel):
             breakmodel.gpu_blocks = [n_layers]
             n_layers = 0
         else:
-            if utils.args.use_ipex:
+            if utils.koboldai_vars.hasxpu:
                 device_count = torch.xpu.device_count()
             else:
                 device_count = torch.cuda.device_count()
@@ -926,7 +929,7 @@ class HFTorchInferenceModel(HFInferenceModel):
                         primaryselect.isnumeric()
                         and 0 <= int(primaryselect) < device_count
                     ):
-                        if utils.args.use_ipex:
+                        if utils.koboldai_vars.hasxpu:
                             breakmodel.primary_device = torch.xpu.device(int(primaryselect))
                         else:
                             breakmodel.primary_device = int(primaryselect)
@@ -935,7 +938,7 @@ class HFTorchInferenceModel(HFInferenceModel):
                         print(
                             f"{Colors.RED}Please enter an integer between 0 and {device_count-1}.{Colors.END}"
                         )
-            elif utils.args.use_ipex:
+            elif utils.koboldai_vars.hasxpu:
                 breakmodel.primary_device = "xpu"
             else:
                 breakmodel.primary_device = 0
@@ -1018,7 +1021,7 @@ class HFTorchInferenceModel(HFInferenceModel):
         ):
             utils.koboldai_vars.breakmodel = False
             utils.koboldai_vars.usegpu = True
-            if utils.args.use_ipex:
+            if utils.koboldai_vars.hasxpu:
                 utils.koboldai_vars.gpu_device = "xpu"
             else:
                 utils.koboldai_vars.gpu_device = len(breakmodel.gpu_blocks) - 1

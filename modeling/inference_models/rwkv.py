@@ -145,7 +145,7 @@ class RWKVInferenceModel(InferenceModel):
         # Now we load!
 
         # TODO: Breakmodel to strat
-        if utils.args.use_ipex:
+        if utils.koboldai_vars.hasxpu:
             self.model = RWKV(model=model_path, strategy="xpu fp16")
         else:
             self.model = RWKV(model=model_path, strategy="cuda:0 fp16")

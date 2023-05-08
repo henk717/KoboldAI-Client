@@ -233,7 +233,7 @@ logger = logging.get_logger(__name__)
 breakmodel = True
 gpu_blocks = []
 disk_blocks = 0
-if utils.args.use_ipex:
+if utils.koboldai_vars.hasxpu:
     primary_device = "xpu"
 else:
     primary_device = 0 if torch.cuda.device_count() > 0 else "cpu"
@@ -289,10 +289,7 @@ def dispatch_model_ex(
     offload_devices = ["cpu", "disk"] if main_device != "cpu" else ["disk"]
 
     if main_device is None:
-        if utils.args.use_ipex:
-            main_device = "xpu"
-        else:
-            main_device = [d for d in device_map.values() if d not in offload_devices][0]
+        main_device = [d for d in device_map.values() if d not in offload_devices][0]
 
     cpu_modules = [name for name, device in device_map.items() if device == "cpu"] if main_device != "cpu" else []
     if state_dict is None and len(cpu_modules) > 0:
@@ -309,12 +306,9 @@ def dispatch_model_ex(
     ):
         disk_state_dict = extract_submodules_state_dict(model.state_dict(), disk_modules)
         offload_state_dict(offload_dir, disk_state_dict)
-    if utils.args.use_ipex:
-        execution_device = "xpu"
-    else:
-        execution_device = {
-            name: main_device if device in offload_devices else device for name, device in device_map.items()
-        }
+    execution_device = {
+        name: main_device if device in offload_devices else device for name, device in device_map.items()
+    }
     offload = {name: device in offload_devices for name, device in device_map.items()}
     save_folder = offload_dir if len(disk_modules) > 0 else None
     if state_dict is not None or save_folder is not None:
@@ -353,7 +347,7 @@ def move_hidden_layers(transformer, h=None):
     if h is None:
         h = transformer.h
 
-    if utils.args.use_ipex:
+    if utils.koboldai_vars.hasxpu:
         assert len(gpu_blocks) <= torch.xpu.device_count()
     else:
         assert len(gpu_blocks) <= torch.cuda.device_count()
@@ -361,7 +355,7 @@ def move_hidden_layers(transformer, h=None):
     ram_blocks = len(h) - sum(gpu_blocks)
 
     transformer.extrastorage = {}
-    if utils.args.use_ipex:
+    if utils.koboldai_vars.hasxpu:
         torch.xpu.empty_cache()
     else:
         torch.cuda.empty_cache()
@@ -384,7 +378,7 @@ def move_hidden_layers(transformer, h=None):
                     able_to_pin_layers = False
                     print(f"WARNING:  You only have enough shared GPU memory for {i} out of {ram_blocks} CPU layers.  Expect suboptimal speed.", file=sys.stderr)
             gc.collect()
-            if utils.args.use_ipex:
+            if utils.koboldai_vars.hasxpu:
                 torch.xpu.empty_cache()
             else:
                 torch.cuda.empty_cache()
@@ -418,7 +412,7 @@ def new_forward_neo(
     return_dict=None,
     embs=None,
 ):
-    if utils.args.use_ipex:
+    if utils.koboldai_vars.hasxpu:
         assert len(gpu_blocks) <= torch.xpu.device_count()
     else:
         assert len(gpu_blocks) <= torch.cuda.device_count()
@@ -526,7 +520,7 @@ def new_forward_neo(
     all_hidden_states = () if output_hidden_states else None
 
     if breakmodel and ram_blocks:
-        if utils.args.use_ipex:
+        if utils.koboldai_vars.hasxpu:
             copystream = torch.xpu.Stream(device="xpu", priority=-1)
         else:
             copystream = torch.cuda.Stream(device=primary_device, priority=-1)
@@ -539,7 +533,7 @@ def new_forward_neo(
                 for param1,param2 in zip(self.h[index1].parameters(),self.h[(i-1)%ram_blocks].parameters()):
                     param1.data = param2.data
                 for param1,param2 in zip(self.h[index1].parameters(),self.extrastorage[index1].parameters()):
-                    if utils.args.use_ipex:
+                    if utils.koboldai_vars.hasxpu:
                         with torch.xpu.stream(copystream):
                             torch.nn.comm.broadcast(param2.data,out = [param1.data])
                     else:
@@ -593,7 +587,7 @@ def new_forward_neo(
 
         if breakmodel:
             if i in range(ram_blocks):
-                if utils.args.use_ipex:
+                if utils.koboldai_vars.hasxpu:
                     torch.xpu.synchronize()
                     torch.xpu.empty_cache()
                 else:
@@ -603,7 +597,7 @@ def new_forward_neo(
     if breakmodel:
         if ram_blocks:
             del copystream
-        if utils.args.use_ipex:
+        if utils.koboldai_vars.hasxpu:
             torch.xpu.empty_cache()
         else:
             torch.cuda.empty_cache()
@@ -642,7 +636,7 @@ def new_forward_xglm(
     output_hidden_states=None,
     return_dict=None,
 ):
-    if utils.args.use_ipex:
+    if utils.koboldai_vars.hasxpu:
         assert len(gpu_blocks) <= torch.xpu.device_count()
     else:
         assert len(gpu_blocks) <= torch.cuda.device_count()
@@ -704,7 +698,7 @@ def new_forward_xglm(
     next_decoder_cache = () if use_cache else None
 
     if breakmodel and ram_blocks:
-        if utils.args.use_ipex:
+        if utils.koboldai_vars.hasxpu:
             copystream = torch.xpu.Stream(device="xpu", priority=-1)
         else:
             copystream = torch.cuda.Stream(device=primary_device, priority=-1)
@@ -723,7 +717,7 @@ def new_forward_xglm(
                 for param1,param2 in zip(self.layers[index1].parameters(),self.layers[(i-1)%ram_blocks].parameters()):
                     param1.data = param2.data
                 for param1,param2 in zip(self.layers[index1].parameters(),self.extrastorage[index1].parameters()):
-                    if utils.args.use_ipex:
+                    if utils.koboldai_vars.hasxpu:
                         with torch.xpu.stream(copystream):
                             torch.nn.comm.broadcast(param2.data,out = [param1.data])
                     else:
@@ -793,7 +787,7 @@ def new_forward_xglm(
         
         if breakmodel:
             if i in range(ram_blocks):
-                if utils.args.use_ipex:
+                if utils.koboldai_vars.hasxpu:
                     torch.xpu.synchronize()
                     torch.xpu.empty_cache()
                 else:
@@ -803,7 +797,7 @@ def new_forward_xglm(
     if breakmodel:
         if ram_blocks:
             del copystream
-        if utils.args.use_ipex:
+        if utils.koboldai_vars.hasxpu:
             torch.xpu.empty_cache()
         else:
             torch.cuda.empty_cache()
@@ -844,7 +838,7 @@ def new_forward_opt(
     output_hidden_states=None,
     return_dict=None,
 ):
-    if utils.args.use_ipex:
+    if utils.koboldai_vars.hasxpu:
         assert len(gpu_blocks) <= torch.xpu.device_count()
     else:
         assert len(gpu_blocks) <= torch.cuda.device_count()
@@ -906,7 +900,7 @@ def new_forward_opt(
     next_decoder_cache = () if use_cache else None
 
     if breakmodel and ram_blocks:
-        if utils.args.use_ipex:
+        if utils.koboldai_vars.hasxpu:
             copystream = torch.xpu.Stream(device="xpu", priority=-1)
         else:
             copystream = torch.cuda.Stream(device=primary_device, priority=-1)
@@ -928,7 +922,7 @@ def new_forward_opt(
                 for param1,param2 in zip(self.layers[index1].parameters(),self.layers[(i-1)%ram_blocks].parameters()):
                     param1.data = param2.data
                 for param1,param2 in zip(self.layers[index1].parameters(),self.extrastorage[index1].parameters()):
-                    if utils.args.use_ipex:
+                    if utils.koboldai_vars.hasxpu:
                         with torch.xpu.stream(copystream):
                             torch.nn.comm.broadcast(param2.data,out = [param1.data])
                     else:
@@ -988,7 +982,7 @@ def new_forward_opt(
         
         if breakmodel:
             if i in range(ram_blocks):
-                if utils.args.use_ipex:
+                if utils.koboldai_vars.hasxpu:
                     torch.xpu.synchronize()
                     torch.xpu.empty_cache()
                 else:
@@ -998,7 +992,7 @@ def new_forward_opt(
     if breakmodel:
         if ram_blocks:
             del copystream
-        if utils.args.use_ipex:
+        if utils.koboldai_vars.hasxpu:
             torch.xpu.empty_cache()
         else:
             torch.cuda.empty_cache()

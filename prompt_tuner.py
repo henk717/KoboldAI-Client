@@ -240,6 +240,8 @@ def move_model_to_devices(model, usegpu, gpu_device):
     for name in utils.layers_module_names:
         layer = int(name.rsplit(".", 1)[1])
         device = ("disk" if layer < disk_blocks else "cpu") if layer < ram_blocks else bisect.bisect_right(cumulative_gpu_blocks, layer - ram_blocks)
+        if utils.koboldai_vars.hasxpu and device == 0:
+            device = "xpu"
         device_map[name] = device
     for name in utils.get_missing_module_names(model, list(device_map.keys())):
         device_map[name] = breakmodel.primary_device
@@ -773,6 +775,8 @@ class TrainerBase(abc.ABC):
                 else:
                     layer = int(max((n for n in utils.layers_module_names if original_key.startswith(n)), key=len).rsplit(".", 1)[1])
                     device = gpu_device if hascuda and usegpu else "disk" if layer < disk_blocks and layer < ram_blocks else "cpu" if not hascuda or not use_breakmodel else "shared" if layer < ram_blocks else bisect.bisect_right(cumulative_gpu_blocks, layer - ram_blocks)
+                    if utils.koboldai_vars.hasxpu and device == 0:
+                        device = "xpu"
                     device_map[key] = device
 
             if utils.num_shards is None or utils.current_shard == 0:
