@@ -1,18 +1,38 @@
 #!/bin/bash
 export PYTHONNOUSERSITE=1
 git submodule update --init --recursive
-if [[ $1 = "cuda" || $1 = "CUDA" ]]; then
-wget -qO- https://micromamba.snakepit.net/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
-bin/micromamba create -f environments/huggingface.yml -r runtime -n koboldai -y
-# Weird micromamba bug causes it to fail the first time, running it twice just to be safe, the second time is much faster
-bin/micromamba create -f environments/huggingface.yml -r runtime -n koboldai -y
-exit
+
+platform_name() {
+  uname="$(uname -a | tr "[:upper:]" "[:lower:]")"
+  case "$uname" in
+    *darwin*arm64*) echo osx-arm64 ;;
+    *darwin*x86_64*) echo osx-64 ;;
+    *linux*arm64*) echo linux-aarch64 ;;
+    *linux*x86_64*) echo linux-64 ;;
+  esac
+}
+
+BIN_LOCATION=bin/micromamba
+[ -e "$BIN_LOCATION" ] && echo "$BIN_LOCATION already exists" >&2 || {
+  url=https://micro.mamba.pm/api/micromamba/$(platform_name)/latest
+  curl -sL $url | bunzip2 | tar xOf - bin/micromamba > "$BIN_LOCATION"
+  chmod +x "$BIN_LOCATION"
+}
+
+env_type=$(echo "${1}" | tr "[:upper:]" "[:lower:]")
+echo $env_type
+
+if [[ $string == *osx* ]]; then
+  # Use mac specific environment file for remote running
+  os_postfix = "-mac"
 fi
-if [[ $1 = "rocm" || $1 = "ROCM" ]]; then
-wget -qO- https://micromamba.snakepit.net/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
-bin/micromamba create -f environments/rocm.yml -r runtime -n koboldai-rocm -y
-# Weird micromamba bug causes it to fail the first time, running it twice just to be safe, the second time is much faster
-bin/micromamba create -f environments/rocm.yml -r runtime -n koboldai-rocm -y
-exit
-fi
-echo Please specify either CUDA or ROCM
+
+case $env_type in
+  cuda|rocm|remote)
+    bin/micromamba create -f environments/${env_type}${os_postfix}.yml -r runtime -n koboldai-${env_type} -y
+    bin/micromamba create -f environments/${env_type}${os_postfix}.yml -r runtime -n koboldai-${env_type} -y
+    ;;
+  *)
+    echo "Please specify either cuda or rocm or remote"
+    ;;
+esac

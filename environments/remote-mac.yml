@@ -1,0 +1,27 @@
+name: koboldai-remote
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - flask=2.2.3
+  - flask-socketio=5.3.2
+  - flask-session=0.4.0
+  - python-socketio=5.7.2
+  - python=3.8.*
+  - eventlet=0.33.3
+  - markdown
+  - bleach=4.1.0
+  - pip
+  - pytorch::pytorch
+  - marshmallow>=3.13
+  - apispec-webframeworks
+  - loguru
+  - Pillow
+  - pip:
+    - flask-cors
+    - lupa==1.10
+    - transformers
+    - ansi2html
+    - flask_compress
+    - ijson
+    - pydub

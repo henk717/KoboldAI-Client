@@ -1,4 +1,4 @@
-name: koboldai
+name: koboldai-cuda
 channels:
   - pytorch
   - nvidia
