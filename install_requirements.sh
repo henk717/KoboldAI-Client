@@ -14,17 +14,19 @@ platform_name() {
 
 BIN_LOCATION=bin/micromamba
 [ -e "$BIN_LOCATION" ] && echo "$BIN_LOCATION already exists" >&2 || {
+  mkdir bin
   url=https://micro.mamba.pm/api/micromamba/$(platform_name)/latest
-  curl -sL $url | bunzip2 | tar xOf - bin/micromamba > "$BIN_LOCATION"
+  curl -sL $url | bunzip2 | tar xOf - "$BIN_LOCATION" > "$BIN_LOCATION"
   chmod +x "$BIN_LOCATION"
 }
 
 env_type=$(echo "${1}" | tr "[:upper:]" "[:lower:]")
 echo $env_type
 
-if [[ $string == *osx* ]]; then
+platform=$(platform_name)
+if [[ $platform == *osx* ]]; then
   # Use mac specific environment file for remote running
-  os_postfix = "-mac"
+  os_postfix="-mac"
 fi
 
 case $env_type in
