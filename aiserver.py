@@ -1325,7 +1325,6 @@ def general_startup(override_args=None):
     parser.add_argument("--req_model", type=str, action='append', required=False, help="Which models which we allow to generate for us during cluster mode. Can be specified multiple times.")
     parser.add_argument("--revision", help="Specify the model revision for huggingface models (can be a git branch/tag name or a git commit hash)")
     parser.add_argument("--cpu", action='store_true', help="By default unattended launches are on the GPU use this option to force CPU usage.")
-    parser.add_argument("--use-ipex-optimize", action='store_true', help="Use IPEX optimizer function.")
     parser.add_argument("--use-channels-last", action='store_true', help="Use torch.channels_last format.")
     parser.add_argument("--breakmodel", action='store_true', help=argparse.SUPPRESS)
     parser.add_argument("--breakmodel_layers", type=int, help=argparse.SUPPRESS)

@@ -248,9 +248,7 @@ class GenericHFTorchInferenceModel(HFTorchInferenceModel):
                     #Don't use self.model = self.model.to(memory_format=torch.channels_last), it tends to generate garbage that way.
                     self.model = self.model.half().to(memory_format=torch.channels_last).to(utils.koboldai_vars.gpu_device) 
                 else:
-                    self.model = self.model.half().to(utils.koboldai_vars.gpu_device)
-                if utils.args.use_ipex_optimize: #Tends to generate garbage.
-                    self.model = torch.xpu.optimize(self.model, dtype=torch.float16) 
+                    self.model = self.model.half().to(utils.koboldai_vars.gpu_device) 
             elif utils.koboldai_vars.breakmodel:
                 # Use both RAM and VRAM (breakmodel)
                 if not self.lazy_load:
