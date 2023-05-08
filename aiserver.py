@@ -8390,6 +8390,15 @@ class WorldInfoUIDsSchema(WorldInfoEntriesUIDsSchema):
 
 class ModelSelectionSchema(KoboldSchema):
     model: str = fields.String(required=True, validate=validate.Regexp(r"^(?!\s*NeoCustom)(?!\s*GPT2Custom)(?!\s*TPUMeshTransformerGPTJ)(?!\s*TPUMeshTransformerGPTNeoX)(?!\s*GooseAI)(?!\s*OAI)(?!\s*InferKit)(?!\s*Colab)(?!\s*API).*$"), metadata={"description": 'Hugging Face model ID, the path to a model folder (relative to the "models" folder in the KoboldAI root folder) or "ReadOnly" for no model'})
+    online_model: str = fields.String(required=False)
+    url: str = fields.String(required=False)
+    key: str = fields.String(required=False)
+    path: str = fields.String(required=False)
+    use_gpu: bool = fields.Bool(required=False)
+    gpu_layers: str = fields.String(required=False)
+    disk_layers: int = fields.Int(required=False)
+    use_8_bit: bool = fields.Bool(required=False)
+
 
 def _generate_text(body: GenerationInputSchema):
     if koboldai_vars.aibusy or koboldai_vars.genseqs:
@@ -8647,6 +8656,8 @@ def put_model(body: ModelSelectionSchema):
       summary: Load a model
       description: |-2
         Loads a model given its Hugging Face model ID, the path to a model folder (relative to the "models" folder in the KoboldAI root folder) or "ReadOnly" for no model.
+
+        Use model = "CLUSTER" and online_model = "<model name>" to load the horde cluster.
       tags:
         - model
       requestBody:
@@ -8665,20 +8676,34 @@ def put_model(body: ModelSelectionSchema):
         {api_validation_error_response}
         {api_server_busy_response}
     """
-    if koboldai_vars.aibusy or koboldai_vars.genseqs:
-        abort(Response(json.dumps({"detail": {
-            "msg": "Server is busy; please try again later.",
-            "type": "service_unavailable",
-        }}), mimetype="application/json", status=503))
-    set_aibusy(1)
-    old_model = koboldai_vars.model
-    koboldai_vars.model = body.model.strip()
-    try:
-        load_model(use_breakmodel_args=True, breakmodel_args_default_to_cpu=True)
-    except Exception as e:
-        koboldai_vars.model = old_model
-        raise e
-    set_aibusy(0)
+    data = {
+        "url": "https://stablehorde.net/",
+        "path": "",
+        "use_gpu": True,
+        "gpu_layers": "",
+        "disk_layers": 0,
+        "use_8_bit": False,
+    }
+    if hasattr(body, 'model'):
+        data['model'] = body.model
+    if hasattr(body, 'online_model'):
+        data['online_model'] = body.online_model
+    if hasattr(body, 'url'):
+        data['url'] = body.url
+    if hasattr(body, 'key'):
+        data['key'] = body.key
+    if hasattr(body, 'path'):
+        data['path'] = body.path
+    if hasattr(body, 'use_gpu'):
+        data['use_gpu'] = body.use_gpu
+    if hasattr(body, 'gpu_layers'):
+        data['gpu_layers'] = body.gpu_layers
+    if hasattr(body, 'disk_layers'):
+        data['disk_layers'] = body.disk_layers
+    if hasattr(body, 'use_8_bit'):
+        data['use_8_bit'] = body.use_8_bit
+
+    UI_2_load_model(data=data)
     return {}
 
 
