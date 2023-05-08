@@ -23,5 +23,6 @@ dependencies:
     - transformers
     - ansi2html
     - flask_compress
+    - flask-session
     - ijson
     - pydub
