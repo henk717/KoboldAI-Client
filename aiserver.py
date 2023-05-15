@@ -10,7 +10,9 @@ from dataclasses import dataclass
 from enum import Enum
 import random
 import shutil
+import threading
 import eventlet
+from queue import Queue
 
 eventlet.monkey_patch(all=True, thread=False, os=False)
 import os, inspect
@@ -1636,7 +1638,10 @@ def get_layer_count(model, directory=""):
             elif(os.path.isdir(koboldai_vars.custmodpth.replace('/', '_'))):
                 model_config = AutoConfig.from_pretrained(koboldai_vars.custmodpth.replace('/', '_'), revision=koboldai_vars.revision, cache_dir="cache")
             else:
-                model_config = AutoConfig.from_pretrained(model, revision=koboldai_vars.revision, cache_dir="cache")
+                # this one is running
+                model_config = AutoConfig.from_pretrained(model, revision=koboldai_vars.revision, cache_dir="cache", trust_remote_code=True)
+                if model == 'mosaicml/mpt-7b-storywriter':
+                    model_config.update({"max_seq_len": 83968})
         try:
             if (model_config.model_type != 'gpt2' or model_config.model_type in ("gpt_neo", "gptj", "xglm", "opt")) and not koboldai_vars.nobreakmodel:
                 return utils.num_layers(model_config)
@@ -7725,6 +7730,7 @@ def get_items_locations_from_text(text):
     # load model and tokenizer
     tokenizer = AutoTokenizer.from_pretrained("dslim/bert-base-NER")
     model = AutoModelForTokenClassification.from_pretrained("dslim/bert-base-NER")
+    logger.warning('ner???')
     nlp = transformers.pipeline("ner", model=model, tokenizer=tokenizer)
     # input example sentence
     ner_results = nlp(text)
@@ -8489,7 +8495,15 @@ def _generate_text(body: GenerationInputSchema):
             old_spfilename = koboldai_vars.spfilename
             spRequest(body.soft_prompt.strip())
         genout = apiactionsubmit(body.prompt, use_memory=body.use_memory, use_story=body.use_story, use_world_info=body.use_world_info, use_authors_note=body.use_authors_note)
-        output = {"results": [{"text": txt} for txt in genout]}
+
+        results = []
+        for txt in genout:
+            if not body.disable_output_formatting:
+                txt = utils.applyoutputformatting(txt)
+            result_dict = {"text": txt}
+            results.append(result_dict)
+
+        output = {"results": results}
     finally:
         for key in saved_settings:
             entry = mapping[key]
@@ -8584,6 +8598,9 @@ def get_version_list():
     return {"results": api_versions}
 
 
+lock = threading.Lock()
+
+
 @api_v1.post("/generate")
 @api_schema_wrap
 def post_generate(body: GenerationInputSchema):
@@ -8623,7 +8640,9 @@ def post_generate(body: GenerationInputSchema):
         {api_server_busy_response}
         {api_out_of_memory_response}
     """
-    return _generate_text(body)
+    with lock:
+        output = _generate_text(body)
+    return output
 
 
 @api_v1.get("/model")
@@ -9341,6 +9360,42 @@ def put_story_save(body: StorySaveSchema):
     saveRequest(fileops.storypath(body.name.strip()))
     return {}
 
+
+class CountSchema(KoboldSchema):
+    prompt: str = fields.String(required=True)
+
+@api_v1.post("/count")
+@api_schema_wrap
+def post_count(body: CountSchema):
+    """---
+    put:
+      summary: Count Tokens
+      description: |-2
+        Counts the tokens of a prompt using the loaded model tokenizer.
+      tags:
+        - model
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: CountSchema
+            example:
+              prompt: o0912830j1kljhjkjashkuye
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema: EmptySchema
+        {api_validation_error_response}
+        {api_server_busy_response}
+    """
+
+    count = len(tokenizer.encode(body.prompt))
+
+    return {
+        "count": count,
+    }
 
 @api_v1.get("/world_info")
 @api_schema_wrap

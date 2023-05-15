@@ -304,7 +304,7 @@ class HFTorchInferenceModel(HFInferenceModel):
     def _get_model(self, location: str, tf_kwargs: Dict):
         tf_kwargs["revision"] = utils.koboldai_vars.revision
         tf_kwargs["cache_dir"] = "cache"
-        tf_kwargs["trust_remote_code"] = utils.koboldai_vars.trust_remote_code
+        tf_kwargs["trust_remote_code"] = True
 
         # If we have model hints for legacy model, use them rather than fall back.
         try:
@@ -317,6 +317,7 @@ class HFTorchInferenceModel(HFInferenceModel):
 
         # Try to determine model type from either AutoModel or falling back to legacy
         try:
+            logger.warning('Did we make it here?')
             return AutoModelForCausalLM.from_pretrained(location, **tf_kwargs)
         except Exception as e:
             traceback_string = traceback.format_exc().lower()
