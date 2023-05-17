@@ -8667,8 +8667,12 @@ def put_model(body: ModelSelectionSchema):
     old_model = koboldai_vars.model
     koboldai_vars.model = body.model.strip()
     try:
-        use_gpu = len(body.gpu_layers) > 0 and sum(map(int, body.gpu_layers.split(","))) > 0
-        load_model(use_breakmodel_args=True, breakmodel_args_default_to_cpu=not use_gpu, use_gpu=use_gpu, gpu_layers=body.gpu_layers)
+        use_gpu = hasattr(body, "gpu_layers") and len(body.gpu_layers) > 0 and sum(map(int, body.gpu_layers.split(","))) > 0
+        load_model(
+            use_breakmodel_args=True,
+            breakmodel_args_default_to_cpu=not use_gpu,
+            use_gpu=use_gpu,
+            gpu_layers=body.gpu_layers if use_gpu else None)
     except Exception as e:
         koboldai_vars.model = old_model
         raise e
