@@ -1737,8 +1737,6 @@ def load_model(model_backend, initial_load=False):
         #Have to add a sleep so the server will send the emit for some reason
         time.sleep(0.1)
 
-    if 'model' in globals():
-        model.unload()
     
     
     # If transformers model was selected & GPU available, ask to use CPU or GPU
@@ -6337,6 +6335,8 @@ def UI_2_resubmit_model_info(data):
 @logger.catch
 def UI_2_load_model(data):
     logger.debug("Loading model with user input of: {}".format(data))
+    if 'model' in globals():
+        model.unload()
     model_backends[data['plugin']].set_input_parameters(data)
     load_model(data['plugin'])
     #load_model(use_gpu=data['use_gpu'], gpu_layers=data['gpu_layers'], disk_layers=data['disk_layers'], online_model=data['online_model'], url=koboldai_vars.colaburl, use_8_bit=data['use_8_bit'])
