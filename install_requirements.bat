@@ -18,7 +18,7 @@ SET PYTHONPATH=
 
 if exist miniconda3\ (
   echo Delete existing installation?
-  echo This is required if you are switching modes, or if you get dependency errors in the game.
+  echo This is required if you are switching modes/GPU vendors, or if you get dependency errors in the game.
   echo 1. Yes
   echo 2. No
   SET /P D=Type the number of the desired option and then press ENTER:
@@ -26,6 +26,17 @@ if exist miniconda3\ (
 	SET D=Workaround
 )
 IF %D%==1 rmdir /s /q miniconda3
+
+:GPU
+echo Which GPU do you have?
+echo 1. NVIDIA
+echo 2. Intel
+echo.
+SET /P M=Type the number of the desired option and then press ENTER:
+IF %M%==1 GOTO Mode
+IF %M%==2 GOTO Mode-ipex
+ECHO Incorrect choice
+GOTO GPU
 
 :Mode
 echo Which installation mode would you like?
@@ -37,6 +48,17 @@ IF %M%==1 GOTO drivemap
 IF %M%==2 GOTO subfolder
 ECHO Incorrect choice
 GOTO MODE
+
+:Mode-ipex
+echo Which installation mode would you like?
+echo 1. Temporary Drive Letter (Mounts the folder as drive B:, more stable and portable)
+echo 2. Subfolder (Traditional method, can't run in folder paths that contain spaces)
+echo.
+SET /P M=Type the number of the desired option and then press ENTER:
+IF %M%==1 GOTO drivemap-ipex
+IF %M%==2 GOTO subfolder-ipex
+ECHO Incorrect choice
+GOTO MODE-IPEX
 
 
 :drivemap
@@ -56,10 +78,36 @@ subst B: /d
 pause
 exit
 
+:drivemap-ipex
+echo 3 > loader.settings
+subst B: /D >nul
+mkdir miniconda3
+subst B: miniconda3
+copy umamba.exe B:\umamba.exe
+copy loader.settings B:\loader.settings
+copy disconnect-kobold-drive.bat B:\disconnect-kobold-drive.bat
+B:
+umamba.exe create -r B:\python\ -n base
+umamba.exe install --no-shortcuts -r B:\python\ -n base -f "%~dp0\environments\ipex.yml" -y --always-copy
+umamba.exe -r B:\ clean -a -y
+rd B:\Python\pkgs /S /Q
+subst B: /d
+pause
+exit
+
 :subfolder
 echo 2 > loader.settings
 umamba.exe create -r miniconda3\ -n base
 umamba.exe install --no-shortcuts -r miniconda3 -n base -f environments\huggingface.yml -y --always-copy
+umamba.exe clean -a -y
+rd miniconda3\Python\pkgs /S /Q
+pause
+exit
+
+:subfolder-ipex
+echo 2 > loader.settings
+umamba.exe create -r miniconda3\ -n base
+umamba.exe install --no-shortcuts -r miniconda3 -n base -f environments\ipex.yml -y --always-copy
 umamba.exe clean -a -y
 rd miniconda3\Python\pkgs /S /Q
 pause
