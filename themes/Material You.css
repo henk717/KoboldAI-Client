@@ -177,6 +177,7 @@
 	--context_colors_submit: #221f24;
 	--context_colors_unused: white;
 	--context_colors_soft_prompt: #000080;
+	--context_colors_instruction: #B60AEC;
 
     /*Parameters*/
 	--scrollbar-size: 6px;

@@ -169,6 +169,7 @@
 	--context_colors_unused: #ffffff24;
 	--context_colors_soft_prompt: #141414;
 	--context_colors_genre: #2c5c88;
+	--context_colors_instruction: #4106B6;
 
     /*Parameters*/
 	--scrollbar-size: 6px;

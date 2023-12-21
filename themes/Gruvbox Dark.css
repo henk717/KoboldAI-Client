@@ -235,6 +235,8 @@
 	--context_colors_submit: var(--gruvbox-light4);
 	--context_colors_unused: var(--gruvbox-light0);
 	--context_colors_soft_prompt: var(--gruvbox-neutral-aqua);
+	--context_colors_genre: #873139;
+	--context_colors_instruction: #3D8830;
 }
 
 /* Overrides */
