@@ -2461,6 +2461,7 @@ body {
 
 .context-sp {background-color: var(--context_colors_soft_prompt);}
 .context-genre {background-color: var(--context_colors_genre);}
+.context-instruction {background-color: var(--context_colors_instruction);}
 .context-prompt {background-color: var(--context_colors_prompt);}
 .context-wi {background-color: var(--context_colors_world_info);}
 .context-memory {background-color: var(--context_colors_memory);}
