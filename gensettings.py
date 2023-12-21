@@ -1021,6 +1021,23 @@ gensettingstf = [
     "name": "wigen_use_own_wi",
     "ui_level": 2
 	},
+       {
+    "UI_V2_Only": True,
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "Instruction Mode",
+	"id": "enable_instruction_mode", 
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+    "tooltip": "Whether the model should use instruction mode (user gives instrutions to the AI to act on).",
+    "menu_path": "Home",
+    "sub_path": "model",
+    "classname": "model",
+    "name": "enable_instruction_mode",
+    "ui_level": 0
+	},
 ]
 
 gensettingsik =[{
@@ -1335,6 +1352,7 @@ gensettingsik =[{
     "classname": "user",
     "name": "singleline"
  	},
+
 ]
 
 formatcontrols = [{

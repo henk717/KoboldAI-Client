@@ -317,6 +317,15 @@ class koboldai_vars(object):
             used_tokens += len(genre_tokens)
 
 
+        ######################################### Add Instruction ###################################################
+        if self.enable_instruction_mode:
+            instruction_text = self.instruction_start + self.instruction + self.instruction_end
+            instruction_tokens = self.tokenizer.encode(instruction_text)
+            self.instruction_length = len(instruction_tokens)
+            used_tokens += len(instruction_tokens)
+        
+            
+
         ######################################### Add memory ########################################################
         max_memory_length = int(token_budget * self.max_memory_fraction)
         memory_text = self.memory
@@ -543,6 +552,14 @@ class koboldai_vars(object):
         
         context += game_context
         
+        ######################################### Add Instruction ###################################################
+        if self.enable_instruction_mode:
+            context.append({
+                "type": "instruction",
+                "text": instruction_text,
+                "tokens": [[x, self.tokenizer.decode(x)] for x in instruction_tokens],
+            })
+        
         if len(context) == 0:
             tokens = []
         else:
@@ -759,6 +776,9 @@ class model_settings(settings):
         self.horde_queue_position = 0
         self.horde_queue_size = 0
         self.use_alt_rep_pen = False
+        self.instruction_start = ""
+        self.instruction_end = ""
+        self.enable_instruction_mode = False
         
         
 
@@ -962,6 +982,9 @@ class story_settings(settings):
         self.commentary_enabled = False
         
         self.save_paths = SavePaths(os.path.join("stories", self.story_name or "Untitled"))
+        
+        self.instruction = ""
+        self.instruction_length = 0
 
         ################### must be at bottom #########################
         self.no_save = False  #Temporary disable save (doesn't save with the file)
@@ -1131,6 +1154,8 @@ class story_settings(settings):
             elif name == 'authornotetemplate':
                 ignore = self._koboldai_vars.calc_ai_text()
             elif name == 'memory':
+                ignore = self._koboldai_vars.calc_ai_text()
+            elif name == 'instruction':
                 ignore = self._koboldai_vars.calc_ai_text()
             elif name == "genres":
                 self._koboldai_vars.calc_ai_text()

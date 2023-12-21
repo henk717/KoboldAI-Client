@@ -3953,7 +3953,8 @@ function calc_token_usage(
 	prompt_length,
 	game_text_length,
 	world_info_length,
-	submit_length
+	submit_length,
+	instruction_length
 ) {
 	let total_tokens = parseInt(document.getElementById('model_max_length_cur').value);
 	let unused_token_count = total_tokens - memory_length - authors_note_length - world_info_length - prompt_length - game_text_length - submit_length;
@@ -3961,6 +3962,7 @@ function calc_token_usage(
 	const data = [
 		{id: "soft_prompt_tokens", tokenCount: soft_prompt_length, label: "Soft Prompt"},
 		{id: "genre_tokens", tokenCount: genre_length, label: "Genre"},
+		{id: "instruction_tokens", tokenCount: instruction_length, label: "Instruction"},
 		{id: "memory_tokens", tokenCount: memory_length, label: "Memory"},
 		{id: "authors_notes_tokens", tokenCount: authors_note_length, label: "Author's Note"},
 		{id: "world_info_tokens", tokenCount: world_info_length, label: "World Info"},
@@ -4398,6 +4400,7 @@ function update_context(data) {
 	let world_info_length = 0;
 	let soft_prompt_length = 0;
 	let submit_length = 0;
+	let instruction_length = 0;
 	
 	//clear out within_max_length class
 	for (action of document.getElementsByClassName("within_max_length")) {
@@ -4417,7 +4420,8 @@ function update_context(data) {
 			memory: "memory",
 			authors_note: "an",
 			action: "action",
-			submit: 'submit'
+			submit: 'submit',
+			instruction: 'instruction'
 		}[entry.type]);
 
 		let el = $e(
@@ -4446,6 +4450,9 @@ function update_context(data) {
 		switch (entry.type) {
 			case 'soft_prompt':
 				soft_prompt_length += entry.tokens.length;
+				break;
+			case 'instruction':
+				instruction_length += entry.tokens.length;
 				break;
 			case 'prompt':
 				const promptEl = document.getElementById('story_prompt');
@@ -4493,7 +4500,8 @@ function update_context(data) {
 		prompt_length,
 		game_text_length,
 		world_info_length,
-		submit_length
+		submit_length,
+		instruction_length
 	);
 
 
