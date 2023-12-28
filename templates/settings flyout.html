@@ -207,7 +207,10 @@
 			<div class="setting_tile_area">
 				<textarea rows=2 id="instruction_start" class="var_sync_model_instruction_start var_sync_alt_story_instruction_length fullwidth" onchange='sync_to_server(this);' oninput="autoResize(this)" autocomplete="off" placeholder="Text to send to the AI before the instruction"></textarea><br>
 				User instruction goes here<br>
-				<textarea rows=2 id="instruction_end" class="var_sync_model_instruction_end var_sync_alt_story_instruction_length fullwidth" onchange='sync_to_server(this);' oninput="autoResize(this)" autocomplete="off" placeholder="Text to send to the AI after the instruction"></textarea>
+				<textarea rows=2 id="instruction_end" class="var_sync_model_instruction_end var_sync_alt_story_instruction_length fullwidth" onchange='sync_to_server(this);' oninput="autoResize(this)" autocomplete="off" placeholder="Text to send to the AI after the instruction"></textarea><br>
+				{% with sub_path='instruction' %}
+					{% include 'settings item.html' %}
+				{% endwith %}
 			</div>
 			
 			<div class="collapsable_header" onclick="toggle_setting_category(this);">

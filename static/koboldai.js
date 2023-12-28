@@ -375,7 +375,8 @@ function reset_story() {
 	if (storyPrompt) {
 		storyPrompt.setAttribute("world_info_uids", "");
 	}
-	document.getElementById('themerow').classList.remove("hidden");
+	//document.getElementById('themerow').classList.remove("hidden");
+	document.getElementById('prompt_menu_random').classList.remove("hidden");
 	document.getElementById('input_text').placeholder = "Enter Prompt Here (shift+enter for new line)";
 	text = "";
 	for (i=0;i<70;i++) {
@@ -823,7 +824,8 @@ function do_prompt(data) {
 	//if we have a prompt we need to disable the theme area, or enable it if we don't
 	if (data.value[0].text != "") {
 		document.getElementById('input_text').placeholder = "Enter text here (shift+enter for new line)";
-		document.getElementById('themerow').classList.add("hidden");
+		//document.getElementById('themerow').classList.add("hidden");
+		document.getElementById('prompt_menu_random').classList.add("hidden");
 		document.getElementById('themetext').value = "";
 		document.getElementById("welcome_container").classList.add("hidden");
 		//enable editing
@@ -831,7 +833,8 @@ function do_prompt(data) {
 	} else {
 		document.getElementById('input_text').placeholder = "Enter Prompt Here (shift+enter for new line)";
 		document.getElementById('input_text').disabled = false;
-		document.getElementById('themerow').classList.remove("hidden");
+		//document.getElementById('themerow').classList.remove("hidden");
+		document.getElementById('prompt_menu_random').classList.remove("hidden");
 		addInitChatMessage();
 	}
 	
@@ -3630,6 +3633,28 @@ function save_preset() {
 }
 
 //--------------------------------------------General UI Functions------------------------------------
+function set_input_type(input) {
+	for (item of document.getElementsByClassName("prompt_menu")) {
+		if (input != item) {
+			item.classList.remove("selected");
+			if (document.getElementById(item.getAttribute("textarea_name"))) {
+				document.getElementById(item.getAttribute("textarea_name")).classList.add("hidden");
+			}
+		} else {
+			item.classList.add("selected");
+			if (document.getElementById(item.getAttribute("textarea_name"))) {
+				document.getElementById(item.getAttribute("textarea_name")).classList.remove("hidden");
+			}
+		}
+	}
+	//we want to disable the submit button when on the instruction input as that is just a normal sync, not a submit thing
+	if (input.id == 'prompt_menu_instruction') {
+		document.getElementById('btnsubmit').disabled = true;
+	} else {
+		document.getElementById('btnsubmit').disabled = false;
+	}
+}
+
 function put_cursor_at_element(element) {
 	var range = document.createRange();
 	var sel = window.getSelection();

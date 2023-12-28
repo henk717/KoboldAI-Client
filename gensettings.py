@@ -1021,7 +1021,7 @@ gensettingstf = [
     "name": "wigen_use_own_wi",
     "ui_level": 2
 	},
-       {
+    {
     "UI_V2_Only": True,
 	"uitype": "toggle",
 	"unit": "bool",
@@ -1036,6 +1036,23 @@ gensettingstf = [
     "sub_path": "model",
     "classname": "model",
     "name": "enable_instruction_mode",
+    "ui_level": 0
+	},
+    {
+    "UI_V2_Only": True,
+	"uitype": "toggle",
+	"unit": "bool",
+	"label": "Show Instruction",
+	"id": "show_instruction", 
+	"min": 0,
+	"max": 1,
+	"step": 1,
+	"default": 0,
+    "tooltip": "If set, the instruction will appear in the game text (Visual only)",
+    "menu_path": "Settings",
+    "sub_path": "instruction",
+    "classname": "story",
+    "name": "show_instruction",
     "ui_level": 0
 	},
 ]

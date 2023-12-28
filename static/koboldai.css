@@ -1787,6 +1787,12 @@ body {
 	grid-area: textarea;
 }
 
+#instruction_text{
+	display: flex;
+	flex-direction: column;
+	grid-area: textarea;
+}
+
 #themetext{
 	height: 100%;
 	width: 100%;

@@ -71,14 +71,9 @@
 		<!------------ Theme Area--------------------->
 		<div class="themerow" id="themerow">
 			<div class="tabrow nomenu_icon">
-				<span class="prompt_menu selected" id="prompt_menu_random" onclick="this.classList.add('selected');
-															document.getElementById('prompt_menu_normal').classList.remove('selected');
-															document.getElementById('random_game_prompt').classList.add('hidden');
-															document.getElementById('input_text').classList.remove('hidden');">Prompt</span>
-				<span class="prompt_menu" id="prompt_menu_normal" onclick="this.classList.add('selected');
-															document.getElementById('prompt_menu_random').classList.remove('selected');
-															document.getElementById('random_game_prompt').classList.remove('hidden');
-															document.getElementById('input_text').classList.add('hidden');">Random Prompt</span>
+				<span class="prompt_menu selected" id="prompt_menu_normal" textarea_name='input_text' onclick="set_input_type(this);">Prompt</span>
+				<span class="prompt_menu" id="prompt_menu_random" textarea_name='random_game_prompt' onclick="set_input_type(this);">Random Prompt</span>
+				<span class="prompt_menu" id="prompt_menu_instruction" textarea_name='instruction_text' onclick="set_input_type(this);">Instruction</span>
 			</div>
 		</div>
 		<!------------ Input Area--------------------->
@@ -89,10 +84,11 @@
 				<span class="help_text" style="margin:0px;margin-top:5px;">The AI can create a prompt for you! Optionally type in one or more themes above, or let the AI do it's thing.</span>
 			</div>
 			<button class="var_sync_alt_story_storymode action_button" id="adventure_mode" onclick="toggle_adventure_mode(this);"><span style="font-weight: bold;">Mode: </span><span>Story</span></button>
-			<textarea autocomplete="off" row=5 id="input_text" placeholder="Enter Prompt Here (shift+enter for new line)" oninput='if (this.value != "") {
+			<textarea autocomplete="off" rows=5 id="input_text" placeholder="Enter Prompt Here (shift+enter for new line)" oninput='if (this.value != "") {
 																											document.getElementById("themetext").value = "";
 																										}'
 																										onkeyup="update_token_lengths()"></textarea>
+			<textarea autocomplete="off" rows=5 id="instruction_text" placeholder="Enter Instruction Here" class="var_sync_model_instruction hidden" onchange='sync_to_server(this);' ></textarea>
 			<div class="statusbar_outer hidden var_sync_alt_system_aibusy" id="status_bar" onclick="socket.emit('abort','');">
 				<div class="statusbar_inner" style="width:0%" onclick="socket.emit('abort','');">
 					<div id="status_bar_percent">0%</div>

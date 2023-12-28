@@ -985,6 +985,8 @@ class story_settings(settings):
         
         self.instruction = ""
         self.instruction_length = 0
+        
+        self.show_instruction = False
 
         ################### must be at bottom #########################
         self.no_save = False  #Temporary disable save (doesn't save with the file)
