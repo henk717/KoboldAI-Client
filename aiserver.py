@@ -6172,6 +6172,7 @@ def UI_2_delete_option(data):
 @socketio.on('submit')
 @logger.catch
 def UI_2_submit(data):
+    logger.info(data)
     if not koboldai_vars.noai and data['theme']:
         # Random prompt generation
         logger.debug("doing random prompt")
@@ -6196,9 +6197,9 @@ def UI_2_submit(data):
         logger.warning(f"Unknown gen_mode '{gen_mode_name}', using STANDARD! Report this!")
     
     new_action_text = data['data']
-    if koboldai_vars.instruction != "":
+    if data['instruction'] != "":
         new_action_text += "{{[INPUT]}}"
-        new_action_text += koboldai_vars.instruction
+        new_action_text += data['instruction']
         new_action_text += "{{[OUTPUT]}}"
 
     actionsubmit(new_action_text, actionmode=koboldai_vars.actionmode, gen_mode=gen_mode)

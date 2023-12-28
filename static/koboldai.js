@@ -296,10 +296,15 @@ function storySubmit(genMode=null) {
 	const textInput = document.getElementById("input_text");
 	const themeInput = document.getElementById("themetext");
 	disruptStoryState();
+	let instruction = "";
+	if (!(document.getElementById('instruction_text').classList.contains('hidden'))) {
+		instruction = document.getElementById('instruction_text').value;
+	}
 	socket.emit('submit', {
 		data: textInput.value,
 		theme: themeInput.value,
 		gen_mode: genMode,
+		'instruction': instruction
 	});
 
 	textInput.value = '';
