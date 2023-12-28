@@ -693,6 +693,8 @@ function parseChatMessages(text) {
 function do_story_text_updates(action) {
 	story_area = document.getElementById('Selected Text');
 	current_chunk_number = action.id;
+	let instruction_start = document.getElementById('instruction_start');
+	let instruction_end = document.getElementById('instruction_end');
 	let item = null;
 
 	if (chat.useV2) {
@@ -755,7 +757,8 @@ function do_story_text_updates(action) {
 		if ('wi_highlighted_text' in action.action) {
 			for (chunk of action.action['wi_highlighted_text']) {
 				chunk_element = document.createElement("span");
-				chunk_element.innerText = chunk['text'];
+				//Do instruction removal here if enabled
+				chunk_element.innerText = chunk['text'].replace('{{[INPUT]}}', instruction_start.value).replace('{{[OUTPUT]}}', instruction_end.value);
 				if (chunk['WI matches'] != null) {
 					chunk_element.classList.add("wi_match");
 					chunk_element.setAttribute("tooltip", chunk['WI Text']);
@@ -765,7 +768,8 @@ function do_story_text_updates(action) {
 			}
 		} else {
 			chunk_element = document.createElement("span");
-			chunk_element.innerText = action.action['Selected Text'];
+			//Do instruction removal here if enabled
+			chunk_element.innerText = action.action['Selected Text'].replace('{{[INPUT]}}', instruction_start.value).replace('{{[OUTPUT]}}', instruction_end.value);
 			item.append(chunk_element);
 		}
 		item.original_text = action.action['Selected Text'];
@@ -3633,6 +3637,22 @@ function save_preset() {
 }
 
 //--------------------------------------------General UI Functions------------------------------------
+
+const instruction_expand_size = 90; //size the instruction area should resize to as a percent (less than 100)
+function resize_instruction(input) {
+	input = this;
+	console.log(input);
+	if (input.id == 'input_text') {
+		document.getElementById('input_text').style.width = instruction_expand_size.toString() + '%';
+		document.getElementById('instruction_text').style.width = (100-instruction_expand_size).toString() + '%';
+		document.getElementById('instruction_text').style.marginLeft = instruction_expand_size.toString() + '%';
+	} else {
+		document.getElementById('input_text').style.width = (100-instruction_expand_size).toString() + '%';
+		document.getElementById('instruction_text').style.width = instruction_expand_size.toString() + '%';
+		document.getElementById('instruction_text').style.marginLeft = (100-instruction_expand_size).toString() + '%';
+	}
+}
+
 function set_input_type(input) {
 	for (item of document.getElementsByClassName("prompt_menu")) {
 		if (input != item) {
@@ -3647,12 +3667,19 @@ function set_input_type(input) {
 			}
 		}
 	}
-	//we want to disable the submit button when on the instruction input as that is just a normal sync, not a submit thing
-	if (input.id == 'prompt_menu_instruction') {
-		document.getElementById('btnsubmit').disabled = true;
+	
+	if (input.getAttribute("textarea_name") == 'instruction_text') {
+		//We want to enable the normal submit with additional JS for on click so it expands the area
+		document.getElementById('input_text').classList.remove("hidden")
+		document.getElementById('input_text').style.width = "50%";
+		document.getElementById('instruction_text').style.width = "50%";
+		document.getElementById('instruction_text').style.marginLeft = '50%';
+		document.getElementById('input_text').addEventListener('click', resize_instruction);
 	} else {
-		document.getElementById('btnsubmit').disabled = false;
+		document.getElementById('input_text').removeEventListener("click", resize_instruction);
+		document.getElementById('input_text').style.width = "100%";
 	}
+	
 }
 
 function put_cursor_at_element(element) {

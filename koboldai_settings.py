@@ -317,15 +317,7 @@ class koboldai_vars(object):
             used_tokens += len(genre_tokens)
 
 
-        ######################################### Add Instruction ###################################################
-        if self.enable_instruction_mode:
-            instruction_text = self.instruction_start + self.instruction + self.instruction_end
-            instruction_tokens = self.tokenizer.encode(instruction_text)
-            self.instruction_length = len(instruction_tokens)
-            used_tokens += len(instruction_tokens)
         
-            
-
         ######################################### Add memory ########################################################
         max_memory_length = int(token_budget * self.max_memory_fraction)
         memory_text = self.memory
@@ -551,14 +543,6 @@ class koboldai_vars(object):
             context.append({"type": "prompt", "text": prompt_text, "tokens": prompt_data})
         
         context += game_context
-        
-        ######################################### Add Instruction ###################################################
-        if self.enable_instruction_mode:
-            context.append({
-                "type": "instruction",
-                "text": instruction_text,
-                "tokens": [[x, self.tokenizer.decode(x)] for x in instruction_tokens],
-            })
         
         if len(context) == 0:
             tokens = []
@@ -984,9 +968,6 @@ class story_settings(settings):
         self.save_paths = SavePaths(os.path.join("stories", self.story_name or "Untitled"))
         
         self.instruction = ""
-        self.instruction_length = 0
-        
-        self.show_instruction = False
 
         ################### must be at bottom #########################
         self.no_save = False  #Temporary disable save (doesn't save with the file)
@@ -2069,6 +2050,11 @@ class KoboldStoryRegister(object):
                 # Add submitted_text to the end
                 actions[self.action_count + 1] = submitted_text
         action_text = "".join(txt for _, txt in sorted(actions.items()))
+        
+        ########### Add in the instruction mode header/footer ############
+        action_text = action_text.replace("{{[INPUT]}}", self._koboldai_vars.instruction_start)
+        action_text = action_text.replace("{{[OUTPUT]}}", self._koboldai_vars.instruction_end)
+        
         ###########action_text_split = [sentence, actions used in sentence, token length, included in AI context]################
         action_text_split = [[x, [], 0, False] for x in self.sentence_re.findall(action_text)]
         #The above line can trim out the last sentence if it's incomplete. Let's check for that and add it back in

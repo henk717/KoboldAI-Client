@@ -88,7 +88,7 @@
 																											document.getElementById("themetext").value = "";
 																										}'
 																										onkeyup="update_token_lengths()"></textarea>
-			<textarea autocomplete="off" rows=5 id="instruction_text" placeholder="Enter Instruction Here" class="var_sync_model_instruction hidden" onchange='sync_to_server(this);' ></textarea>
+			<textarea autocomplete="off" rows=5 id="instruction_text" placeholder="Enter Instruction Here" class="var_sync_model_instruction hidden" onchange='sync_to_server(this);' onclick='resize_instruction(this);'></textarea>
 			<div class="statusbar_outer hidden var_sync_alt_system_aibusy" id="status_bar" onclick="socket.emit('abort','');">
 				<div class="statusbar_inner" style="width:0%" onclick="socket.emit('abort','');">
 					<div id="status_bar_percent">0%</div>

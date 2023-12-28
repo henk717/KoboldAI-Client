@@ -1791,6 +1791,8 @@ body {
 	display: flex;
 	flex-direction: column;
 	grid-area: textarea;
+	width: 50%;
+	margin-left: 50%;
 }
 
 #themetext{
