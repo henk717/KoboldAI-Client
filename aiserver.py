@@ -6172,7 +6172,6 @@ def UI_2_delete_option(data):
 @socketio.on('submit')
 @logger.catch
 def UI_2_submit(data):
-    logger.info(data)
     if not koboldai_vars.noai and data['theme']:
         # Random prompt generation
         logger.debug("doing random prompt")
