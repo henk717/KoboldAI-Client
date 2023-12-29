@@ -264,7 +264,7 @@ hr, #token-breakdown-container, .tabrow::before {
 	margin-bottom: 7px;
 }
 
-#input_text, #themetext {
+#input_text, #themetext, #instruction_text {
 	border: none !important;
 }
 

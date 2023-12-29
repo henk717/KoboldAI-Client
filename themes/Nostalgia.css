@@ -222,7 +222,7 @@
 
 /* Boxes */
 
-#input_text, #themetext {
+#input_text, #themetext, #instruction_text {
     border-color: #999999 !important;
 }
 

@@ -231,7 +231,7 @@
 	border-bottom: 1px solid #2f3b4b;
 }
 
-#input_text, #themetext {
+#input_text, #themetext, #instruction_text {
     border-color: #2f3b4b !important;
 }
 

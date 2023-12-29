@@ -229,7 +229,7 @@
 
 /* Boxes */
 
-#input_text, #themetext {
+#input_text, #themetext, #instruction_text {
     border-color: #c9c9c9 !important;
 }
 
