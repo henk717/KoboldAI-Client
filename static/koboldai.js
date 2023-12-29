@@ -96,7 +96,6 @@ var privacy_mode_enabled = false;
 var attention_wanting_wi_bar = null;
 var ai_busy = false;
 var can_show_options = true;
-var show_instructions = false;
 
 var streaming = {
 	windowOpen: false,
@@ -786,8 +785,7 @@ function do_story_text_updates(action) {
 			}
 			item.append(chunk_element);
 		}
-		item.original_text = action.action['Selected Text'];
-		item.classList.remove("pulse")
+				item.classList.remove("pulse")
 		item.classList.remove("single_pulse");
 		item.classList.add("single_pulse");
 	}
@@ -828,7 +826,6 @@ function do_prompt(data) {
 				}
 				item.append(chunk_element);
 			}
-			item.original_text = full_text;
 			item.classList.remove("pulse");
 			assign_world_info_to_action(-1, null);
 		}
@@ -3436,14 +3433,6 @@ function gametextwatcher(records) {
 		//console.log(record);
 		var chunk = record.target;
 		var original_text;
-		if (chunk.getAttribute("chunk") != null) {
-			if (document.getElementById('user_show_instruction').checked) {
-				original_text = actions_data[chunk.getAttribute("chunk")]["Selected Text"].replace("{{[INPUT]}}", document.getElementById('instruction_start').value).replace("{{[OUTPUT]}}", document.getElementById('instruction_end').value)
-			} else {
-				original_text = actions_data[chunk.getAttribute("chunk")]["Selected Text"].split(String.fromCharCode(29))[0];
-			}
-			console.log(original_text);
-		}
 		var found_chunk = false;
 		while (chunk != game_text) {
 			if (chunk) {
@@ -3454,6 +3443,13 @@ function gametextwatcher(records) {
 				chunk = chunk.parentNode;
 			} else {
 				break;
+			}
+		}
+		if ((chunk) && (chunk.getAttribute("chunk") != null)) {
+			if (document.getElementById('user_show_instruction').checked) {
+				original_text = actions_data[chunk.getAttribute("chunk")]["Selected Text"].replace("{{[INPUT]}}", document.getElementById('instruction_start').value).replace("{{[OUTPUT]}}", document.getElementById('instruction_end').value)
+			} else {
+				original_text = actions_data[chunk.getAttribute("chunk")]["Selected Text"].split(String.fromCharCode(29))[0];
 			}
 		}
 		if ((found_chunk) && (original_text != chunk.innerText)) {;
@@ -3555,10 +3551,18 @@ function savegametextchanges() {
 
 function update_game_text(id, new_text) {
 	let temp = null;
+	//Thanks to the new instruction mode and not actually saving the instruction text, we need to do some special processing here to not loose those tags
+	
+	//find the last occurance of the end tag
+	if (new_text.includes(String.fromCharCode(29))) {
+		temp = new_text.split(String.fromCharCode(29));
+		new_text = temp[0] + String.fromCharCode(29) + "{{[INPUT]}}" + String.fromCharCode(29) + temp[2] + String.fromCharCode(29) + "{{[OUTPUT]}}";
+	}
+	
 	if (id == -1) {
 		if (document.getElementById("story_prompt")) {
 			temp = document.getElementById("story_prompt");
-			temp.original_text = new_text;
+			actions_data[id]['Selected Text'] = new_text;
 			temp.classList.add("pulse");
 			sync_to_server(temp);
 		} else {
@@ -3567,7 +3571,7 @@ function update_game_text(id, new_text) {
 	} else {
 		if (document.getElementById("Selected Text Chunk " + id)) {
 			temp = document.getElementById("Selected Text Chunk " + id);
-			temp.original_text = new_text;
+			actions_data[id]['Selected Text'] = new_text;
 			temp.classList.add("pulse");
 			socket.emit("Set Selected Text", {"id": id, "text": new_text});
 		} else {
