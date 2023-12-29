@@ -6197,9 +6197,13 @@ def UI_2_submit(data):
     
     new_action_text = data['data']
     if data['instruction'] != "":
+        new_action_text += chr(29)
         new_action_text += "{{[INPUT]}}"
+        new_action_text += chr(29)
         new_action_text += data['instruction']
+        new_action_text += chr(29)
         new_action_text += "{{[OUTPUT]}}"
+        
 
     actionsubmit(new_action_text, actionmode=koboldai_vars.actionmode, gen_mode=gen_mode)
 

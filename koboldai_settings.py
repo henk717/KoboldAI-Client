@@ -1235,6 +1235,7 @@ class user_settings(settings):
         self.horde_worker_name = "My Awesome Instance"
         self.horde_url = "https://horde.koboldai.net"
         self.model_selected = ""
+        self.show_instruction = True
         
     def __setattr__(self, name, value):
         new_variable = name not in self.__dict__
@@ -2054,6 +2055,7 @@ class KoboldStoryRegister(object):
         ########### Add in the instruction mode header/footer ############
         action_text = action_text.replace("{{[INPUT]}}", self._koboldai_vars.instruction_start)
         action_text = action_text.replace("{{[OUTPUT]}}", self._koboldai_vars.instruction_end)
+        action_text = action_text.replace(chr(29), "")
         
         ###########action_text_split = [sentence, actions used in sentence, token length, included in AI context]################
         action_text_split = [[x, [], 0, False] for x in self.sentence_re.findall(action_text)]

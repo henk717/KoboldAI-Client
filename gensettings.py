@@ -1049,9 +1049,9 @@ gensettingstf = [
 	"step": 1,
 	"default": 0,
     "tooltip": "If set, the instruction will appear in the game text (Visual only)",
-    "menu_path": "Settings",
-    "sub_path": "instruction",
-    "classname": "story",
+    "menu_path": "Interface",
+    "sub_path": "UI",
+    "classname": "user",
     "name": "show_instruction",
     "ui_level": 0
 	},

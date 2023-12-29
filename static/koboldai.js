@@ -96,6 +96,7 @@ var privacy_mode_enabled = false;
 var attention_wanting_wi_bar = null;
 var ai_busy = false;
 var can_show_options = true;
+var show_instructions = false;
 
 var streaming = {
 	windowOpen: false,
@@ -763,7 +764,11 @@ function do_story_text_updates(action) {
 			for (chunk of action.action['wi_highlighted_text']) {
 				chunk_element = document.createElement("span");
 				//Do instruction removal here if enabled
-				chunk_element.innerText = chunk['text'].replace('{{[INPUT]}}', instruction_start.value).replace('{{[OUTPUT]}}', instruction_end.value);
+				if (!document.getElementById('user_show_instruction').checked) {
+					chunk_element.innerText = chunk['text'].split(String.fromCharCode(29))[0];
+				} else {
+					chunk_element.innerText = chunk['text'].replace('{{[INPUT]}}', instruction_start.value).replace('{{[OUTPUT]}}', instruction_end.value);
+				}
 				if (chunk['WI matches'] != null) {
 					chunk_element.classList.add("wi_match");
 					chunk_element.setAttribute("tooltip", chunk['WI Text']);
@@ -774,7 +779,11 @@ function do_story_text_updates(action) {
 		} else {
 			chunk_element = document.createElement("span");
 			//Do instruction removal here if enabled
-			chunk_element.innerText = action.action['Selected Text'].replace('{{[INPUT]}}', instruction_start.value).replace('{{[OUTPUT]}}', instruction_end.value);
+			if (!document.getElementById('user_show_instruction').checked) {
+				chunk_element.innerText = action.action['Selected Text'].split(String.fromCharCode(29))[0];
+			} else {
+				chunk_element.innerText = action.action['Selected Text'].replace('{{[INPUT]}}', instruction_start.value).replace('{{[OUTPUT]}}', instruction_end.value);
+			}
 			item.append(chunk_element);
 		}
 		item.original_text = action.action['Selected Text'];
@@ -3426,6 +3435,15 @@ function gametextwatcher(records) {
 		//get the actual chunk rather than the sub-node
 		//console.log(record);
 		var chunk = record.target;
+		var original_text;
+		if (chunk.getAttribute("chunk") != null) {
+			if (document.getElementById('user_show_instruction').checked) {
+				original_text = actions_data[chunk.getAttribute("chunk")]["Selected Text"].replace("{{[INPUT]}}", document.getElementById('instruction_start').value).replace("{{[OUTPUT]}}", document.getElementById('instruction_end').value)
+			} else {
+				original_text = actions_data[chunk.getAttribute("chunk")]["Selected Text"].split(String.fromCharCode(29))[0];
+			}
+			console.log(original_text);
+		}
 		var found_chunk = false;
 		while (chunk != game_text) {
 			if (chunk) {
@@ -3438,7 +3456,7 @@ function gametextwatcher(records) {
 				break;
 			}
 		}
-		if ((found_chunk) && (chunk.original_text != chunk.innerText)) {;
+		if ((found_chunk) && (original_text != chunk.innerText)) {;
 			if (!dirty_chunks.includes(chunk.getAttribute("chunk"))) {
 				dirty_chunks.push(chunk.getAttribute("chunk"));
 			}
@@ -3534,7 +3552,6 @@ function savegametextchanges() {
 	}
 	dirty_chunks = [];
 }
-
 
 function update_game_text(id, new_text) {
 	let temp = null;
