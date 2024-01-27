@@ -688,8 +688,9 @@ class settings(object):
 
 class model_settings(settings):
     local_only_variables = ['apikey', 'default_preset']
-    no_save_variables = ['modelconfig', 'custmodpth', 'generated_tkns', 
-                         'loaded_layers', 'total_layers', 'total_download_chunks', 'downloaded_chunks', 'presets', 'default_preset', 
+    no_save_variables = ['modelconfig', 'custmodpth', 'generated_tkns',
+                         'loaded_layers', 'total_layers', 'loaded_checkpoints', 'total_checkpoints',
+                         'total_download_chunks', 'downloaded_chunks', 'presets', 'default_preset',
                          'welcome', 'welcome_default', 'simple_randomness', 'simple_creativity', 'simple_repitition',
                          'badwordsids', 'uid_presets', 'model', 'model_type', 'lazy_load', 'fp32_model', 'modeldim', 'horde_wait_time', 'horde_queue_position', 'horde_queue_size', 'newlinemode', 'tqdm_progress', 'tqdm_rem_time', '_tqdm']
     settings_name = "model"
@@ -706,6 +707,8 @@ class model_settings(settings):
         self.generated_tkns = 0    # If using a backend that supports Lua generation modifiers, how many tokens have already been generated, otherwise 0
         self.loaded_layers = 0     # Used in UI 2 to show model loading progress
         self.total_layers = 0      # Same as above
+        self.loaded_checkpoints = 0
+        self.total_checkpoints = 1
         self.total_download_chunks = 0 # tracks how much of the model has downloaded for the UI 2
         self.downloaded_chunks = 0 #as above
         self._tqdm        = tqdm.tqdm(total=self.genamt, file=self.ignore_tqdm())    # tqdm agent for generating tokens. This will allow us to calculate the remaining time
@@ -833,13 +836,22 @@ class model_settings(settings):
         #Setup TQDP for model loading
         elif name == "loaded_layers" and '_tqdm' in self.__dict__:
             if value == 0:
-                self._tqdm.reset(total=self.total_layers)
+                self._tqdm.reset(total=self.total_layers if self.total_checkpoints == 1 else 1000)
                 self.tqdm_progress = 0
             else:
-                self._tqdm.update(1)
-                self.tqdm_progress = int(float(self.loaded_layers)/float(self.total_layers)*100)
+                if self.total_checkpoints == 1:
+                    self._tqdm.update(1)
+                elif self.total_layers != 0 and self.total_checkpoints != 0:
+                    proper_progress = (self.loaded_checkpoints + value/self.total_layers)/self.total_checkpoints*1000
+                    self._tqdm.update(proper_progress - self._tqdm.n)
+                    
+                self.tqdm_progress = int(float(self._tqdm.n)/float(self._tqdm.total)*100)
+                
                 if self._tqdm.format_dict['rate'] is not None:
-                    self.tqdm_rem_time = str(datetime.timedelta(seconds=int(float(self.total_layers-self.loaded_layers)/self._tqdm.format_dict['rate'])))  
+                    elapsed = self._tqdm.format_dict["elapsed"]
+                    rate = self._tqdm.format_dict["rate"]
+                    remaining = (self._tqdm.total - self._tqdm.n) / rate if rate and self._tqdm.total else 0
+                    self.tqdm_rem_time = str(datetime.timedelta(seconds=remaining))
         #Setup TQDP for model downloading
         elif name == "total_download_chunks" and '_tqdm' in self.__dict__:
             self._tqdm.reset(total=value)
@@ -1256,13 +1268,14 @@ class undefined_settings(settings):
 class system_settings(settings):
     local_only_variables = ['lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 
                             'lua_koboldcore', 'regex_sl', 'acregex_ai', 'acregex_ui', 'comregex_ai', 'comregex_ui',
-                            'sp', '_horde_pid', 'inference_config', 'image_pipeline', 
+                            'sp', '_horde_pid', 'inference_config', 'image_pipeline', 'summary_model_config',
                             'summarizer', 'summary_tokenizer', 'tts_model', 'rng_states', 'comregex_ai', 'comregex_ui', 'colab_arg']
-    no_save_variables = ['lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 
+    no_save_variables = ['lua_state', 'lua_logname', 'lua_koboldbridge', 'lua_kobold', 'summary_model_config',
                          'lua_koboldcore', 'sp', 'sp_length', '_horde_pid', 'horde_share', 'aibusy', 
-                         'serverstarted', 'inference_config', 'image_pipeline', 'summarizer', 'on_colab'
+                         'serverstarted', 'inference_config', 'image_pipeline', 'summarizer', 'on_colab', 'quiet',
                          'summary_tokenizer', 'use_colab_tpu', 'noai', 'disable_set_aibusy', 'cloudflare_link', 'tts_model',
-                         'generating_image', 'bit_8_available', 'host', 'hascuda', 'usegpu', 'rng_states', 'comregex_ai', 'comregex_ui', 'git_repository', 'git_branch', 'colab_arg']
+                         'generating_image', 'bit_8_available', 'host', 'hascuda', 'usegpu', 'rng_states', 'comregex_ai', 'comregex_ui', 'git_repository', 'git_branch', 'colab_arg',
+                         'disable_model_load']
     settings_name = "system"
     def __init__(self, socketio, koboldai_var):
         self._socketio = socketio
@@ -1343,12 +1356,14 @@ class system_settings(settings):
         self.image_pipeline = None
         self.summarizer = None
         self.summary_tokenizer = None
+        self.summary_model_config = {}
         self.keep_img_gen_in_memory = False
         self.cookies = {} #cookies for colab since colab's URL changes, cookies are lost
         self.experimental_features = False
         self.seen_messages = []
         self.git_repository = ""
         self.git_branch = ""
+        self.disable_model_load = False
         
         
         @dataclass
@@ -1617,11 +1632,11 @@ class KoboldStoryRegister(object):
             if "image_gen" not in json_data["actions"][item]:
                 json_data["actions"][item]["image_gen"] = False
 
+            action_id = int(item)
+            temp[action_id] = json_data['actions'][item]
+            if action_id >= self.action_count-100: #sending last 100 items to UI
+                data_to_send.append({"id": action_id, 'action':  temp[action_id]})
 
-            temp[int(item)] = json_data['actions'][item]
-            if int(item) >= self.action_count-100: #sending last 100 items to UI
-                data_to_send.append({"id": item, 'action':  temp[int(item)]})
-        
         process_variable_changes(self._socketio, "story", 'actions', data_to_send, None)
         
         self.actions = temp
@@ -2245,6 +2260,12 @@ class KoboldStoryRegister(object):
         elif action_id in self.actions:
             self.actions[action_id]['picture_filename'] = filename
             self.actions[action_id]['picture_prompt'] = prompt
+    
+    def clear_picture(self, action_id):
+        action_id = int(action_id)
+        if action_id in self.actions:
+            del self.actions[action_id]['picture_filename']
+            del self.actions[action_id]['picture_prompt']
     
     def get_picture(self, action_id):
         if action_id == -1:
