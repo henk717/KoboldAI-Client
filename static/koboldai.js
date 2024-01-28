@@ -695,6 +695,12 @@ function parseChatMessages(text) {
 	return messages;
 }
 
+function reparse_actions() {
+	for (const [key, value] of Object.entries(actions_data)) {
+		do_story_text_updates({"id": key, "action": value});
+	}
+}
+
 function do_story_text_updates(action) {
 	story_area = document.getElementById('Selected Text');
 	current_chunk_number = action.id;
@@ -1200,6 +1206,14 @@ function var_changed(data) {
 		
 		
 		
+	}
+	
+	//If we've changed the instruction header/footer, re-work game text
+	if (data.classname == 'model' && ((data.name == 'instruction_start') || (data.name == 'instruction_end'))) {
+		reparse_actions();
+	}
+	if (data.classname == 'user' && data.name == 'show_instruction') {
+		reparse_actions();
 	}
 	
 	//if we changed the gen amount, make sure our option area is set/not set
@@ -3503,28 +3517,19 @@ function gametextwatcher(records) {
 		}
 		chunk_text = chunk.innerText.split(String.fromCharCode(29));
 		if (chunk_text.length > 2) {
-			console.log(chunk_text[0].slice(0, -1));
 			chunk_text = chunk_text[0].slice(0, -1) + String.fromCharCode(29) + chunk_text[2];
 		} else {
 			chunk_text = chunk_text[0]
 		}
 		if ((found_chunk) && (original_text != chunk_text)) {
-			console.log({"Original": original_text, "New": chunk_text, "Chunk": chunk.innerText, "Same": original_text==chunk_text, "chunk_item": chunk});
-			console.log(chunk.id);
-			console.log(chunk.innerText.split(String.fromCharCode(29)));
-			console.log("1");
 			if (!dirty_chunks.includes(chunk.getAttribute("chunk"))) {
 				dirty_chunks.push(chunk.getAttribute("chunk"));
 			}
 		} else if ((record.addedNodes.length > 0) && !(found_chunk) && !(record.addedNodes[0] instanceof HTMLElement)) {
-			console.log({"Original": original_text, "New": chunk_text, "Chunk": chunk.innerText, "Same": original_text==chunk_text});
-			console.log("2");
 			if (!dirty_chunks.includes("game_text")) {
 				dirty_chunks.push("game_text");
 			}
 		} else if ((record.target.nodeName == "#text") && (record.target.parentNode == game_text)) {
-			console.log({"Original": original_text, "New": chunk_text, "Chunk": chunk.innerText, "Same": original_text==chunk_text});
-			console.log("#text and parent is game_text");
 			if (!dirty_chunks.includes("game_text")) {
 				dirty_chunks.push("game_text");
 			}
