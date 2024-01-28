@@ -3881,3 +3881,22 @@ select {
 	text-decoration: underline dotted red;
 }
 
+.instruction {
+	border-top: thick double grey;
+	border-bottom: thick double grey;
+}
+
+.InstructionHeader {
+	background-color: #404040;
+	color: white;
+	pointer-events: none;
+}
+
+.InstructionUser {
+	
+}
+
+.InstructionFooter {
+	background-color: #404040;
+	pointer-events: none;
+}

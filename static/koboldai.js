@@ -765,8 +765,31 @@ function do_story_text_updates(action) {
 				//Do instruction removal here if enabled
 				if (!document.getElementById('user_show_instruction').checked) {
 					chunk_element.innerText = chunk['text'].split(String.fromCharCode(29))[0];
+					
 				} else {
-					chunk_element.innerText = chunk['text'].replace('{{[INPUT]}}', instruction_start.value).replace('{{[OUTPUT]}}', instruction_end.value);
+					text_value = chunk['text'].split(String.fromCharCode(29));
+					for (i=0; i<text_value.length; i++) {
+						temp = document.createElement("span");
+						if (i==1) {
+							item.append(chunk_element);
+							temp2 = document.createElement("div");
+							temp2.classList.add("instruction");
+							chunk_element.append(temp2);
+							chunk_element = temp2;
+							temp.classList.add("InstructionHeader");
+							temp.contentEditable = false;
+							temp.innerText = String.fromCharCode(29);
+						}
+						if (i==2) {
+							temp.classList.add("InstructionUser");
+						}
+						if (i==3) {
+							temp.classList.add("InstructionFooter");
+							temp.contentEditable = false;
+						}
+						temp.innerText += text_value[i].replace('{{[INPUT]}}', instruction_start.value + String.fromCharCode(29)).replace('{{[OUTPUT]}}', String.fromCharCode(29) + instruction_end.value);
+						chunk_element.append(temp);
+					}
 				}
 				if (chunk['WI matches'] != null) {
 					chunk_element.classList.add("wi_match");
@@ -781,7 +804,29 @@ function do_story_text_updates(action) {
 			if (!document.getElementById('user_show_instruction').checked) {
 				chunk_element.innerText = action.action['Selected Text'].split(String.fromCharCode(29))[0];
 			} else {
-				chunk_element.innerText = action.action['Selected Text'].replace('{{[INPUT]}}', instruction_start.value).replace('{{[OUTPUT]}}', instruction_end.value);
+				text_value = action.action['Selected Text'].split(String.fromCharCode(29));
+				for (i=0; i<text_value.length; i++) {
+					temp = document.createElement("span");
+					if (i==1) {
+						item.append(chunk_element);
+						temp2 = document.createElement("div");
+						temp2.classList.add("instruction");
+						chunk_element.append(temp2);
+						chunk_element = temp2;
+						temp.classList.add("InstructionHeader");
+						temp.contentEditable = false;
+						temp.innerText = String.fromCharCode(29);
+					}
+					if (i==2) {
+						temp.classList.add("InstructionUser");
+					}
+					if (i==3) {
+						temp.classList.add("InstructionFooter");
+						temp.contentEditable = false;
+					}
+					temp.innerText += text_value[i].replace('{{[INPUT]}}', instruction_start.value + String.fromCharCode(29)).replace('{{[OUTPUT]}}', String.fromCharCode(29) + instruction_end.value);
+					chunk_element.append(temp);
+				}
 			}
 			item.append(chunk_element);
 		}
@@ -3416,6 +3461,7 @@ function gametextwatcher(records) {
 				if ((chunk instanceof HTMLElement) && (chunk.hasAttribute("chunk"))) {
 					if (!document.getElementById("Selected Text Chunk " + chunk.getAttribute("chunk"))) {
 						//Node was actually deleted. 
+						console.log("deleted node");
 						if (!dirty_chunks.includes(chunk.getAttribute("chunk"))) {
 							dirty_chunks.push(chunk.getAttribute("chunk"));
 							//Stupid firefox sometimes looses focus as you type after deleting stuff. Fix that here
@@ -3447,21 +3493,38 @@ function gametextwatcher(records) {
 			}
 		}
 		if ((chunk) && (chunk.getAttribute("chunk") != null)) {
-			if (document.getElementById('user_show_instruction').checked) {
-				original_text = actions_data[chunk.getAttribute("chunk")]["Selected Text"].replace("{{[INPUT]}}", document.getElementById('instruction_start').value).replace("{{[OUTPUT]}}", document.getElementById('instruction_end').value)
+			//Instruction mode text makes a mess of our text detector. We only want to detect changes in the pre-instruction and actual instruction text, 
+			original_text = actions_data[chunk.getAttribute("chunk")]["Selected Text"].split(String.fromCharCode(29));
+			if (original_text.length > 2) {
+				original_text = original_text[0] + String.fromCharCode(29) + original_text[2];
 			} else {
-				original_text = actions_data[chunk.getAttribute("chunk")]["Selected Text"].split(String.fromCharCode(29))[0];
+				original_text = original_text[0]
 			}
 		}
-		if ((found_chunk) && (original_text != chunk.innerText)) {;
+		chunk_text = chunk.innerText.split(String.fromCharCode(29));
+		if (chunk_text.length > 2) {
+			console.log(chunk_text[0].slice(0, -1));
+			chunk_text = chunk_text[0].slice(0, -1) + String.fromCharCode(29) + chunk_text[2];
+		} else {
+			chunk_text = chunk_text[0]
+		}
+		if ((found_chunk) && (original_text != chunk_text)) {
+			console.log({"Original": original_text, "New": chunk_text, "Chunk": chunk.innerText, "Same": original_text==chunk_text, "chunk_item": chunk});
+			console.log(chunk.id);
+			console.log(chunk.innerText.split(String.fromCharCode(29)));
+			console.log("1");
 			if (!dirty_chunks.includes(chunk.getAttribute("chunk"))) {
 				dirty_chunks.push(chunk.getAttribute("chunk"));
 			}
 		} else if ((record.addedNodes.length > 0) && !(found_chunk) && !(record.addedNodes[0] instanceof HTMLElement)) {
+			console.log({"Original": original_text, "New": chunk_text, "Chunk": chunk.innerText, "Same": original_text==chunk_text});
+			console.log("2");
 			if (!dirty_chunks.includes("game_text")) {
 				dirty_chunks.push("game_text");
 			}
 		} else if ((record.target.nodeName == "#text") && (record.target.parentNode == game_text)) {
+			console.log({"Original": original_text, "New": chunk_text, "Chunk": chunk.innerText, "Same": original_text==chunk_text});
+			console.log("#text and parent is game_text");
 			if (!dirty_chunks.includes("game_text")) {
 				dirty_chunks.push("game_text");
 			}
@@ -3542,6 +3605,7 @@ function savegametextchanges() {
 			chunk = document.getElementById("Selected Text Chunk " + chunk_id);
 		}
 		if (chunk) {
+			
 			update_game_text(parseInt(chunk.getAttribute("chunk")), chunk.innerText);
 		} else {
 			update_game_text(parseInt(chunk_id), "");
@@ -3557,7 +3621,7 @@ function update_game_text(id, new_text) {
 	//find the last occurance of the end tag
 	if (new_text.includes(String.fromCharCode(29))) {
 		temp = new_text.split(String.fromCharCode(29));
-		new_text = temp[0] + String.fromCharCode(29) + "{{[INPUT]}}" + String.fromCharCode(29) + temp[2] + String.fromCharCode(29) + "{{[OUTPUT]}}";
+		new_text = temp[0].slice(0,-1) + String.fromCharCode(29) + "{{[INPUT]}}" + String.fromCharCode(29) + temp[2] + String.fromCharCode(29) + "{{[OUTPUT]}}";
 	}
 	
 	if (id == -1) {
@@ -3670,7 +3734,6 @@ function save_preset() {
 const instruction_expand_size = 90; //size the instruction area should resize to as a percent (less than 100)
 function resize_instruction(input) {
 	input = this;
-	console.log(input);
 	if (input.id == 'input_text') {
 		document.getElementById('input_text').style.width = instruction_expand_size.toString() + '%';
 		document.getElementById('instruction_text').style.width = (100-instruction_expand_size).toString() + '%';
@@ -3943,7 +4006,6 @@ function tts_playing() {
 }
 
 function set_image_action(action_id) {
-	console.log(action_id);
 	socket.emit("get_story_image", {action_id: action_id}, change_image);
 }
 
@@ -4901,7 +4963,6 @@ function drop(e) {
 		socket.emit("wi_set_folder", {'dragged_id': dragged_id, 'folder': drop_id});
 	} else {
 		//insert the draggable element before the drop element
-		console.log(element);
 		element.parentElement.insertBefore(draggable, element);
 		draggable.classList.add("pulse");
 
@@ -5321,7 +5382,6 @@ async function downloadDebugFile(redact=true) {
 	
 	r = await fetch("/get_log");
 	let aiserver_log = await r.json();
-	console.log(aiserver_log);
 	
 	debug_info['aiserver errors'] = []
 	for (data of aiserver_log.aiserver_log) {
@@ -5435,7 +5495,6 @@ async function downloadDebugFile(redact=true) {
 		}
 	}
 	
-	console.log(debug_info);
 
 	downloadString(JSON.stringify(debug_info, null, 4), "kobold_debug.json");
 }
@@ -5634,7 +5693,7 @@ async function readLoreCard(file) {
 
 async function processDroppedFile(file) {
 	let extension = /.*\.(.*)/.exec(file.name)[1];
-	console.log("file is", file)
+	//console.log("file is", file)
 	let data;
 
 	switch (extension) {
@@ -6725,7 +6784,7 @@ let load_substitutions;
 			if (c.target === target) duplicates.push(c.card);
 		}
 		
-		console.log(duplicates)
+		//console.log(duplicates)
 		return duplicates.length > 1 ? duplicates : [];
 	}
 	
@@ -6759,7 +6818,7 @@ let load_substitutions;
 			
 			for (const duplicateCard of getDuplicateCards(this.value)) {
 				if (duplicateCard === card) continue;
-				console.log("DUPE", duplicateCard)
+				//console.log("DUPE", duplicateCard)
 				substitutions.splice(getSubstitutionIndex(duplicateCard), 1);
 				duplicateCard.remove();
 			}
@@ -6790,7 +6849,7 @@ let load_substitutions;
 		enabledCheckbox.addEventListener("change", function() {
 			let card = this.parentElement.parentElement;
 			let i = getSubstitutionIndex(card);
-			console.log(this.checked)
+			//console.log(this.checked)
 
 			substitutions[i].enabled = this.checked;
 			enabledVisual.setAttribute("title", this.checked ? "Enabled" : "Disabled")
@@ -7337,7 +7396,7 @@ function computeChatGametext(actionId) {
 	}
 
 	let text = lines.join("\n");
-	console.log(actionId, text);
+	//console.log(actionId, text);
 	socket.emit("Set Selected Text", {id: actionId, text: text});
 	chat.lastEdit = actionId;
 }
