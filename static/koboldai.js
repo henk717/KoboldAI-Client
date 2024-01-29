@@ -839,7 +839,13 @@ function do_story_text_updates(action) {
 				item.classList.remove("pulse")
 		item.classList.remove("single_pulse");
 		item.classList.add("single_pulse");
+		
 	}
+	
+	Array.from(document.getElementsByClassName('last-update')).forEach(
+	  (el) => el.classList.remove('last-update')
+	);
+	item.classList.add("last-update");
 }
 
 function do_prompt(data) {

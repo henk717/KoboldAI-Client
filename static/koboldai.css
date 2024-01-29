@@ -3900,3 +3900,7 @@ select {
 	background-color: #404040;
 	pointer-events: none;
 }
+
+.last-update, #token-stream-buffer {
+	text-decoration: underline dotted;
+}

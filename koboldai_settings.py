@@ -248,6 +248,12 @@ class koboldai_vars(object):
         # TODO: This might be ineffecient, should we cache some of this?
         return [[token, self.tokenizer.decode(token)] for token in encoded]
     
+    def string_found(string1, string2):
+        if re.search(r"\b" + re.escape(string1) + r"\b", string2):
+            return True
+        return False
+
+    
     def calc_ai_text(self, submitted_text=None, return_text=False, send_context=True, allowed_wi_entries=None, allowed_wi_folders=None):
         """Compute the context that would be submitted to the AI.
 
@@ -400,13 +406,13 @@ class koboldai_vars(object):
                         #Check to see if we have the keys/secondary keys in the text so far
                         match = False
                         for key in wi['key']:
-                            if key in wi_search:
+                            if string_found(key, wi_search):
                                 match = True
                                 break
                         if wi['selective'] and match:
                             match = False
                             for key in wi['keysecondary']:
-                                if key in wi_search:
+                                if string_found(key, wi_search):
                                     match=True
                                     break
                         if match:
@@ -490,12 +496,12 @@ class koboldai_vars(object):
                         #Check to see if we have the keys/secondary keys in the text so far
                         match = False
                         for key in wi['key']:
-                            if key in wi_search:
+                            if string_found(key, wi_search):
                                 match = True
                                 break
                         if wi['selective'] and match:
                             match = False
-                            for key in wi['keysecondary']:
+                            for string_found(key, wi_search):
                                 if key in wi_search:
                                     match=True
                                     break
