@@ -501,8 +501,8 @@ class koboldai_vars(object):
                                 break
                         if wi['selective'] and match:
                             match = False
-                            for string_found(key, wi_search):
-                                if key in wi_search:
+                            for key in wi['keysecondary']:
+                                if string_found(key, wi_search):
                                     match=True
                                     break
                         if method == 1:
