@@ -3585,6 +3585,8 @@ textarea.fullwidth {
 
 .rawtext {
 	white-space: pre-wrap;
+	padding-left: 0px;
+	padding-right: 0px;
 }
 
 .action_mode_input {
@@ -3609,7 +3611,7 @@ textarea.fullwidth {
 	font-style: italic;
 }
 
-.wi_match {
+.worldinfo {
 	font-style: italic;
 }
 
@@ -4042,6 +4044,10 @@ select {
 .instruction {
 	border-top: thick double grey;
 	border-bottom: thick double grey;
+}
+
+.instruction[user_show_instruction="false"] {
+	display: none;
 }
 
 .InstructionHeader {

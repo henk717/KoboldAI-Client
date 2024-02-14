@@ -697,7 +697,9 @@ function parseChatMessages(text) {
 
 function reparse_actions() {
 	for (const [key, value] of Object.entries(actions_data)) {
-		do_story_text_updates({"id": key, "action": value});
+		if (key != -1) {
+			do_story_text_updates({"id": key, "action": value});
+		}
 	}
 }
 
@@ -706,7 +708,7 @@ function do_story_text_updates(action) {
 	current_chunk_number = action.id;
 	let instruction_start = document.getElementById('instruction_start');
 	let instruction_end = document.getElementById('instruction_end');
-	let item = null;
+	let chunk_element = null;
 
 	if (chat.useV2) {
 		//console.log(`[story_text_update] ${action.id}`)
@@ -729,18 +731,18 @@ function do_story_text_updates(action) {
 		}
 	} else {
 		if (document.getElementById('Selected Text Chunk '+action.id)) {
-			item = document.getElementById('Selected Text Chunk '+action.id);
+			chunk_element = document.getElementById('Selected Text Chunk '+action.id);
 			//clear out the item first
-			while (item.firstChild) { 
-				item.removeChild(item.firstChild);
+			while (chunk_element.firstChild) { 
+				chunk_element.removeChild(chunk_element.firstChild);
 			}
 		} else {
-			item = document.createElement("span");
-			item.id = 'Selected Text Chunk '+action.id;
-			item.classList.add("rawtext");
-			item.setAttribute("chunk", action.id);
-			item.setAttribute("tabindex", parseInt(action.id)+1);
-			item.addEventListener("focus", (event) => {
+			chunk_element = document.createElement("span");
+			chunk_element.id = 'Selected Text Chunk '+action.id;
+			chunk_element.classList.add("rawtext");
+			chunk_element.setAttribute("chunk", action.id);
+			chunk_element.setAttribute("tabindex", parseInt(action.id)+1);
+			chunk_element.addEventListener("focus", (event) => {
 				set_image_action(action.id);
 			});
 			
@@ -754,99 +756,106 @@ function do_story_text_updates(action) {
 				eval_element += 1;
 			}
 			if (closest_element.nextElementSibling) {
-				story_area.insertBefore(item, closest_element.nextElementSibling);
+				story_area.insertBefore(chunk_element, closest_element.nextElementSibling);
 			} else {
-				story_area.append(item);
+				story_area.append(chunk_element);
 			}
 		}
 
-		item.classList.toggle(
+		chunk_element.classList.toggle(
 			"action_mode_input",
 			action.action['Selected Text'].replaceAll("\n", "")[0] === ">"
 		);
 
-		if ('wi_highlighted_text' in action.action) {
-			for (chunk of action.action['wi_highlighted_text']) {
-				chunk_element = document.createElement("span");
-				//Do instruction removal here if enabled
-				if (!document.getElementById('user_show_instruction').checked) {
-					chunk_element.innerText = chunk['text'].split(String.fromCharCode(29))[0];
-					
-				} else {
-					text_value = chunk['text'].split(String.fromCharCode(29));
-					for (i=0; i<text_value.length; i++) {
-						temp = document.createElement("span");
-						if (i==1) {
-							item.append(chunk_element);
-							temp2 = document.createElement("div");
-							temp2.classList.add("instruction");
-							chunk_element.append(temp2);
-							chunk_element = temp2;
-							temp.classList.add("InstructionHeader");
-							temp.contentEditable = false;
-							temp.innerText = String.fromCharCode(29);
-						}
-						if (i==2) {
-							temp.classList.add("InstructionUser");
-						}
-						if (i==3) {
-							temp.classList.add("InstructionFooter");
-							temp.contentEditable = false;
-						}
-						temp.innerText += text_value[i].replace('{{[INPUT]}}', instruction_start.value + String.fromCharCode(29)).replace('{{[OUTPUT]}}', String.fromCharCode(29) + instruction_end.value);
-						chunk_element.append(temp);
-					}
-				}
-				if (chunk['WI matches'] != null) {
-					chunk_element.classList.add("wi_match");
-					chunk_element.setAttribute("tooltip", chunk['WI Text']);
-					chunk_element.setAttribute("wi-uid", chunk['WI matches']);
-				}
-				item.append(chunk_element);
+	
+		
+		//First, let's split our action text into regular text, instruction header, instruction text, and instruction footer
+		
+		action_text = do_wi_highlights(action.action['Selected Text']);
+			
+		instruction_area = document.createElement('div');
+		instruction_area.classList.add("instruction");
+		instruction_area.classList.add('var_sync_alt_user_show_instruction');
+		instruction_area.setAttribute('user_show_instruction', document.getElementById('user_show_instruction').checked);
+		for (action_text_item of action_text) {
+			text_area = document.createElement('span');
+			text_area.classList.add(action_text_item['type']);
+			text_area.classList.add('rawtext');
+			text_area.innerText = action_text_item['text'];
+			
+			//If we're a world info entry, let's add the WI metadata
+			if (action_text_item['type'] == 'worldinfo') {
+				text_area.setAttribute('tooltip', action_text_item['world info text']);
 			}
-		} else {
-			chunk_element = document.createElement("span");
-			//Do instruction removal here if enabled
-			if (!document.getElementById('user_show_instruction').checked) {
-				chunk_element.innerText = action.action['Selected Text'].split(String.fromCharCode(29))[0];
+			
+			//add group code if we've got instructions
+			if (action_text_item['type'] == 'InstructionHeader') {
+				text_area.innerText = String.fromCharCode(29) + instruction_start.value + String.fromCharCode(29);
+				text_area.contentEditable = false;
+			} else if (action_text_item['type'] == 'InstructionFooter') {
+				text_area.innerText = String.fromCharCode(29) + instruction_end.value;
+				text_area.contentEditable = false;
+			}
+			
+			//Add text to game screen
+			if (['InstructionFooter', 'InstructionHeader', 'InstructionUser'].includes(action_text_item['type'])) {
+				instruction_area.append(text_area);
 			} else {
-				text_value = action.action['Selected Text'].split(String.fromCharCode(29));
-				for (i=0; i<text_value.length; i++) {
-					temp = document.createElement("span");
-					if (i==1) {
-						item.append(chunk_element);
-						temp2 = document.createElement("div");
-						temp2.classList.add("instruction");
-						chunk_element.append(temp2);
-						chunk_element = temp2;
-						temp.classList.add("InstructionHeader");
-						temp.contentEditable = false;
-						temp.innerText = String.fromCharCode(29);
-					}
-					if (i==2) {
-						temp.classList.add("InstructionUser");
-					}
-					if (i==3) {
-						temp.classList.add("InstructionFooter");
-						temp.contentEditable = false;
-					}
-					temp.innerText += text_value[i].replace('{{[INPUT]}}', instruction_start.value + String.fromCharCode(29)).replace('{{[OUTPUT]}}', String.fromCharCode(29) + instruction_end.value);
-					chunk_element.append(temp);
-				}
+				chunk_element.append(text_area);
 			}
-			item.append(chunk_element);
+			
+			if (action_text_item['type'] == 'InstructionFooter') {
+				chunk_element.append(instruction_area);
+			}
+			
 		}
-				item.classList.remove("pulse")
-		item.classList.remove("single_pulse");
-		item.classList.add("single_pulse");
+		
+		chunk_element.classList.remove("pulse")
+		chunk_element.classList.remove("single_pulse");
+		chunk_element.classList.add("single_pulse");
 		
 	}
 	
 	Array.from(document.getElementsByClassName('last-update')).forEach(
 	  (el) => el.classList.remove('last-update')
 	);
-	item.classList.add("last-update");
+	chunk_element.classList.add("last-update");
 }
+
+function do_wi_highlights(action_data) {
+	var action_text = action_data.split(String.fromCharCode(29));
+	for (i=0; i<action_text.length; i++) {
+		action_text[i] = {'text': action_text[i], 'type': {0: 'gametext', 1: 'InstructionHeader', 2: 'InstructionUser', 3: 'InstructionFooter'}[i]};
+	}
+	//let's find any world info text in the action text
+	//Loop through each WI, through each chunk of the action text, through each key looking for matches
+	for (const [_, wi] of Object.entries(world_info_data)) {
+		for (i=0; i<action_text.length;i++) {
+			for (key of wi['key']) {
+				if (action_text[i]['text'].includes(key) && (action_text[i]['type'] == 'gametext')) {
+					for (secondkey of (wi['keysecondary'].length == 0)? [null] : wi['keysecondary']) {
+						if ((wi['selective'] && (action_text[i]['text'].includes(secondkey))) || (!wi['selective'])) {
+							temp = action_text[i]['text'].split(new RegExp('\\b' + key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b'));
+							for (j=0; j<temp.length; j++) {
+								temp[j] = {'text': temp[j], 'type': 'game_text'};
+								if (j+1 < temp.length) {
+									temp.splice(j+1, 0, {'text': key, 'type': 'worldinfo', 'world info text': wi['content']});
+									j++;
+								}
+							}
+							action_text.splice(i,1);
+							action_text.splice.apply(action_text, [i, 0].concat(temp));
+							break;
+						}
+					}
+					break;
+				}
+			}
+		}
+	}
+	return action_text;
+}
+
 
 function do_prompt(data) {
 	if (!document.getElementById("story_prompt")) {
