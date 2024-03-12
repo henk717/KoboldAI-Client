@@ -84,10 +84,12 @@ class model_backend(InferenceModel):
                     temp = json.load(f)
                     for key in temp:
                         saved_data[key] = temp[key]
+                    if saved_data!=None and saved_data['key']!="":
+                        self.key = saved_data['key']
                 except:
                     pass
-        if 'key' in saved_data:
-            self.key = saved_data['key']
+        if 'key' in parameters:
+            self.key = parameters['key']
         self.source = model_name
 
         requested_parameters = []
