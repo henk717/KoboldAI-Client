@@ -379,7 +379,7 @@ class model_backend(InferenceModel):
             json=reqdata,
             headers={
                 "Authorization":"Bearer " + self.key,
-                "HTTP-Referer": "https://github.com/scott-ca/KoboldAI-united", #For funsies
+                "HTTP-Referer": "https://github.com/henk717/KoboldAI", #For funsies
                 "Content-Type": "application/json"
             }
             )
