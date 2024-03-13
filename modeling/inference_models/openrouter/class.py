@@ -33,7 +33,7 @@ class model_backend(api_handler_model_backend):
     def __init__(self):
         super().__init__()
         self.url = "https://openrouter.ai/api/v1/models" #Due to functionality elsewhere in the code, this needs to be like this. But the actual server is https://openrouter.ai/api/v1/chat
-        self.serverurl = "https://openrouter.ai/api/v1/chat"
+        self.serverurl = "https://openrouter.ai/api/v1/chat/completions"
         self.source = "OpenRouter"
 
         self.post_token_hooks = [
