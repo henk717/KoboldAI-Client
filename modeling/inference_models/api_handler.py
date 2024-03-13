@@ -17,17 +17,10 @@ from modeling.inference_model import (
     GenerationSettings,
     InferenceModel,
     use_core_manipulations,
-    ModelCapabilities,
+    GenerationMode
 )
 
 from modeling.stoppers import Stoppers
-
-class GenerationMode(Enum): #Is this even needed here? Could the enum in inference_model be used directly instead?
-    STANDARD = "standard"
-    FOREVER = "forever"
-    UNTIL_EOS = "until_eos"
-    UNTIL_NEWLINE = "until_newline"
-    UNTIL_SENTENCE_END = "until_sentence_end"
 
 def stopper_translator(stopper)->str: #This is a bit of a hack, but it makes some simple stoppers available to use in plaintext via api-calls
         if stopper == Stoppers.newline_stopper:
@@ -37,44 +30,70 @@ def stopper_translator(stopper)->str: #This is a bit of a hack, but it makes som
         else:
             return ""
 
-class OpenRouterAPIError(Exception):
+class APIError(Exception):
     def __init__(self, error_type: str, error_message) -> None:
         super().__init__(f"{error_type}: {error_message}")
 
+def api_caller(call, responses, i): #Define a function to call the API, so we can multithread it for more SPEED, just don't accidentally get your key banned for DDOS or something
+            if not utils.koboldai_vars.quiet:
+                print("Worker", i, "calling API")
+
+            response = requests.post(
+                call["url"], #needs to be hardcoded due to functionality elsewhere in the code
+                json=call["reqdata"],
+                headers=call["headers"],
+            )
+            if not utils.koboldai_vars.quiet:
+                print(response)
+            
+            if not response.ok: ##TODO: Check whether this error handling actually works. Dubious
+                # Send error message to web client
+                if "error" in response:
+                    error_type = response["error"]["type"]
+                    error_message = response["error"]["message"]
+                else:
+                    error_type = "Unknown"
+                    error_message = "Unknown"
+                raise APIError(error_type, error_message)
+            responses[i] = response.json()["choices"]
+
+def api_call(call)->list: #A wrapper for the api_caller function that only calls the API once, and returns the result. This is used for single calls, and is not multithreaded.
+    responses=[None]*1
+    api_caller(call, responses, 0)
+    if responses[0] is None:
+        raise APIError("Unknown", "API call failed: No response received.")
+    return responses[0]
+
+def batch_api_call(call, batch_count)->list: #A wrapper for the api_caller function that calls the API multiple times, and returns the results. This is used for batch calls, and is multithreaded.
+    responses=[None]*batch_count
+    pool = Pool(batch_count)
+    for i in range(batch_count):
+        pool.apply_async(api_caller, args=(call, responses, i))
+
+    pool.close()
+    pool.join() #Pool.join() waits for all the processes to finish, and then the program continues. This is needed to ensure that the program doesn't continue before the processes are finished, as that would cause a crash.
+    #Be aware that if an API request fails, we might get stuck here indefinitely. TODO: This is a potential issue that should be addressed in the future.
+
+    for item in responses: #Check if any of the items are None, and raise an error if they are
+        if item is None:
+            raise APIError("Unknown", "API call failed: No response received.")
+    return responses
+    
 
 class model_backend(InferenceModel):
-    """InferenceModel for interfacing with OpenRouter's generation API."""
+    """InferenceModel for interfacing with API's."""
     
     def __init__(self):
         super().__init__()
         self.key = ""
-        self.url = "https://openrouter.ai/api/v1/models"
-        self.pres_pen = 0
-        self.freq_pen = 0
+        
         self.pad_token_id= -1
 
-        self.post_token_hooks = [
-            #PostTokenHooks.stream_tokens,
-        ]
-
-        self.stopper_hooks = [
-            #Stoppers.core_stopper,
-            #Stoppers.dynamic_wi_scanner, #Big nope on OpenRouter
-            Stoppers.singleline_stopper,
-            #Stoppers.chat_mode_stopper, #Implemented by checking chatmode var directly!
-            #Stoppers.stop_sequence_stopper,
-        ]
-
-        self.capabilties = ModelCapabilities(
-            #embedding_manipulation=True,
-            #post_token_hooks=True,
-            stopper_hooks=True,
-            #post_token_probs=True,
-        )
-        #self._old_stopping_criteria = None
+        self.pres_pen = 0
+        self.freq_pen = 0
     
     def is_valid(self, model_name, model_path, menu_path):
-        return model_name == "OpenRouter"
+        return True
     
     def get_requested_parameters(self, model_name, model_path, menu_path, parameters = {}):
         saved_data = {'key': "", 'freq_pen': 0, 'pres_pen': 0}
@@ -100,7 +119,7 @@ class model_backend(InferenceModel):
                 "id": "key",
                 "default": self.key,
                 "check": {"value": "", 'check': "!="},
-                "tooltip": "User Key to use when connecting to OpenRouter.",
+                "tooltip": "User Key to use when connecting to " + self.source + ".",
                 "menu_path": "",
                 "refresh_model_inputs": True,
                 "extra_classes": ""
@@ -112,11 +131,11 @@ class model_backend(InferenceModel):
                 "id": "model",
                 "default": "",
                 "check": {"value": "", 'check': "!="},
-                "tooltip": "Which model to use when running OpenRouter.",
+                "tooltip": "Which model to use when running " + self.source + ".",
                 "menu_path": "",
                 "refresh_model_inputs": False,
                 "extra_classes": "",
-                'children': self.get_oai_models(),
+                'children': self.get_models(),
 
             }])
         requested_parameters.append({ #Could these two be in the regular settings menu somehow?
@@ -156,40 +175,9 @@ class model_backend(InferenceModel):
         self.freq_pen = parameters['freq_pen']
         self.plaintext_stoppers = []
 
-    def get_oai_models(self):
-        if self.key == "":
-            return []
+    def get_models(self):
+        raise NotImplementedError
         
-            
-        # Get list of models from OpenRouter
-        logger.init("OpenRouter Engines", status="Retrieving")
-        req = requests.get(
-            self.url, 
-            headers = {
-                'Authorization': 'Bearer '+self.key
-                }
-            )
-        if(req.status_code == 200):
-            r = req.json()
-            engines = r["data"]
-            try:
-                engines = [{"value": en["id"], "text": "{} ({})".format(en['id'], "Ready")} for en in engines]
-            except:
-                logger.error(engines)
-                raise
-            
-            online_model = ""
-
-                
-            logger.init_ok("OpenRouter Engines", status="OK")
-            logger.debug("OpenRouter Engines: {}".format(engines))
-            return engines
-        else:
-            # Something went wrong, print the message and quit since we can't initialize an engine
-            logger.init_err("OpenRouter Engines", status="Failed")
-            logger.error(req.json())
-            emit('from_server', {'cmd': 'errmsg', 'data': req.json()})
-            return []
             
 
     def _load(self, save_model: bool, initial_load: bool) -> None:
@@ -318,6 +306,33 @@ class model_backend(InferenceModel):
         return total_gens, already_generated
 
 
+    def _raw_api_generate(
+        self,
+        prompt_plaintext: str,
+        max_new: int,
+        gen_settings: GenerationSettings,
+        batch_count: Optional[int] = 1,
+        do_streaming: Optional[bool] = False,
+        is_core: Optional[bool] = False,
+        seed: Optional[int] = None,
+        chatmode: Optional[bool] = False,
+        gen_mode: Optional[GenerationMode] = GenerationMode.STANDARD,
+        **kwargs,
+    ) -> List:
+        """Lowest level model-agnostic generation function. To be overridden by model implementation.
+
+        Args:
+            prompt_plaintext (str): Prompt as plaintext
+            max_new (int): Maximum amount of new tokens to generate
+            gen_settings (GenerationSettings): State to pass in single-generation setting overrides
+            batch_count (int, optional): How big of a batch to generate. Defaults to 1.
+            seed (int, optional): If not None, this seed will be used to make reproducible generations. Defaults to None.
+
+        Returns:
+            Outputs: The api's output
+        """
+        raise NotImplementedError
+
     def _raw_generate(
         self,
         prompt_tokens: Union[List[int], torch.Tensor],
@@ -329,7 +344,7 @@ class model_backend(InferenceModel):
         seed: Optional[int] = None,
         chatmode: Optional[bool] = False,
         gen_mode: Optional[GenerationMode] = GenerationMode.STANDARD,
-        **kwargs,
+        **kwargs
     ) -> GenerationResult:
 
         decoded_prompt = utils.decodenewlines(self.tokenizer.decode(prompt_tokens))
@@ -337,80 +352,19 @@ class model_backend(InferenceModel):
         # Store context in memory to use it for comparison with generated content
         utils.koboldai_vars.lastctx = decoded_prompt
 
-        if is_core & utils.koboldai_vars.chatmode: #TODO: Improve chat mode, openrouter permits sending "user" and "bot" names in addition to the messages
-            promptormessage = "messages"
-            payload = [{"role": "user", "content": decoded_prompt}]
-
-        else:
-            promptormessage = "prompt"
-            payload = decoded_prompt
-
-
-        reqdata = {
-            promptormessage: payload,
-            "model": self.model_name, #Required for OpenRouter!
-
-            # TODO: Implement streaming & more stop sequences
-            "stop": self.plaintext_stoppers,
-            "stream": False,
-
-            "max_tokens": max_new,
-            "temperature": gen_settings.temp,
-            "top_p": gen_settings.top_p,
-            "top_k": gen_settings.top_k,
-            "frequency_penalty": self.freq_pen,
-            "presence_penalty": self.pres_pen,
-            "repetition_penalty": gen_settings.rep_pen,
-            "seed": seed, #OpenAI only
-            #"n": batch_count, not an option for openrouter :(
-            
-            # TODO: Implement logit bias
-            #"logit_bias": {}
-            
-        }
-
-        outputs=[]
-        items=[None]*batch_count
-
-        def api_caller(reqdata, items, i): #Define a function to call the API, so we can multithread it for more SPEED, just don't accidentally get your key banned for DDOS or something
-            if not utils.koboldai_vars.quiet:
-                print("Worker", i, "calling API")
-
-            response = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions", #needs to be hardcoded due to functionality elsewhere in the code
-            json=reqdata,
-            headers={
-                "Authorization":"Bearer " + self.key,
-                "HTTP-Referer": "https://github.com/henk717/KoboldAI", #For funsies
-                "Content-Type": "application/json"
-            }
-            )
-            if not utils.koboldai_vars.quiet:
-                print(response)
-            
-            if not response.ok: ##TODO: Check whether this error handling actually works. Dubious
-                # Send error message to web client
-                if "error" in response:
-                    error_type = response["error"]["type"]
-                    error_message = response["error"]["message"]
-                else:
-                    error_type = "Unknown"
-                    error_message = "Unknown"
-                raise OpenRouterAPIError(error_type, error_message)
-            items[i] = response.json()["choices"]
-
-        pool = Pool(batch_count)
-        for i in range(batch_count):
-            pool.apply_async(api_caller, args=(reqdata, items, i))
-
-        pool.close()
-        pool.join() #Pool.join() waits for all the processes to finish, and then the program continues. This is needed to ensure that the program doesn't continue before the processes are finished, as that would cause a crash.
-        #Be aware that if an API request fails, we might get stuck here indefinitely. TODO: This is a potential issue that should be addressed in the future.
-
-        for item in items: #Strip the outer layer of the response, and append the inner layer to the outputs list
-            if item is None:
-                raise OpenRouterAPIError("Unknown", "API call failed: No response received.")
-            outputs.append(item[0]["text"]) #We now have a list of the texts [{"textA"}, {"textB"}, {"textC"} etc.]
+        outputs = []
+        outputs = self._raw_api_generate(
+            decoded_prompt,
+            max_new,
+            gen_settings,
+            batch_count=batch_count,
+            do_streaming=do_streaming,
+            is_core=is_core,
+            seed=seed,
+            chatmode=chatmode,
+            gen_mode=gen_mode,
+            kwargs=kwargs,
+        ) #Process the outputs from the API call
 
         tokenized = []
         for x in outputs: #Tokenize the outputs so they can be returned as a GenerationResult
