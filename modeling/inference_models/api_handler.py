@@ -39,7 +39,7 @@ def api_caller(call, responses, i): #Define a function to call the API, so we ca
                 print("Worker", i, "calling API")
 
             response = requests.post(
-                call["url"], #needs to be hardcoded due to functionality elsewhere in the code
+                call["url"],
                 json=call["reqdata"],
                 headers=call["headers"],
             )
@@ -55,7 +55,7 @@ def api_caller(call, responses, i): #Define a function to call the API, so we ca
                     error_type = "Unknown"
                     error_message = "Unknown"
                 raise APIError(error_type, error_message)
-            responses[i] = response.json()["choices"]
+            responses[i] = response.json()
 
 def api_call(call)->list: #A wrapper for the api_caller function that only calls the API once, and returns the result. This is used for single calls, and is not multithreaded.
     responses=[None]*1
@@ -329,7 +329,7 @@ class model_backend(InferenceModel):
             seed (int, optional): If not None, this seed will be used to make reproducible generations. Defaults to None.
 
         Returns:
-            Outputs: The api's output
+            Outputs: The api's output in plaintext [{str}, {str}, ...]
         """
         raise NotImplementedError
 

@@ -135,7 +135,7 @@ class model_backend(api_handler_model_backend):
             #TODO: Lots of other settings
             "typical_p": 1,
             "eta_cutoff": 0,
-            "tfs": 1,
+            "tfs": gen_settings.tfs,
             "mirostat_mode": 0,
             "mirostat_tau": 0,
             "mirostat_eta": 0,
@@ -167,6 +167,6 @@ class model_backend(api_handler_model_backend):
 
         outputs=[]
         for item in items: #Strip the outer layer of the response, and append the inner layer to the outputs list
-            outputs.append(item[0]["text"]) #We now have a list of the texts [{"textA"}, {"textB"}, {"textC"} etc.]
+            outputs.append(item["choices"][0]["text"]) #We now have a list of the texts [{"textA"}, {"textB"}, {"textC"} etc.]
 
         return outputs

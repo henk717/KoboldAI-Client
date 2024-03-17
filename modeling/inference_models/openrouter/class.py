@@ -138,7 +138,6 @@ class model_backend(api_handler_model_backend):
             "presence_penalty": self.pres_pen,
             "repetition_penalty": gen_settings.rep_pen,
             "seed": seed, #OpenAI only
-            #"n": batch_count, not an option for openrouter :(
             
             # TODO: Implement logit bias
             #"logit_bias": {}
@@ -149,6 +148,7 @@ class model_backend(api_handler_model_backend):
         headers={
                 "Authorization":"Bearer " + self.key,
                 "HTTP-Referer": "https://github.com/henk717/KoboldAI", #For funsies
+                "X-Title": "KoboldAI",
                 "Content-Type": "application/json"
             }
         
@@ -158,6 +158,6 @@ class model_backend(api_handler_model_backend):
 
         outputs=[]
         for item in items: #Strip the outer layer of the response, and append the inner layer to the outputs list
-            outputs.append(item[0]["text"]) #We now have a list of the texts [{"textA"}, {"textB"}, {"textC"} etc.]
+            outputs.append(item["choices"][0]["text"]) #We now have a list of the texts [{"textA"}, {"textB"}, {"textC"} etc.]
 
         return outputs
