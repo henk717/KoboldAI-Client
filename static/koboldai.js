@@ -4185,7 +4185,6 @@ function Change_Theme(theme) {
 			}
 		}
 		recolorTokens();
-		create_theming_elements();
 	}
 }
 

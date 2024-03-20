@@ -13,18 +13,19 @@
 		});
 	</script>
 	<!---<script type="module">import {encode, decode} from "./static/tokenizer.js";window.encode = encode;window.decode = decode;</script>--->
-	<link href="static/open-iconic/css/open-iconic.css" rel="stylesheet">
-	<link rel="stylesheet" href="static/bootstrap-toggle.min.css">
-	<link rel="stylesheet" href="static/bootstrap.min.css">
-	<script src="static/jquery-3.6.0.min.js"></script>
-	<script src="static/bootstrap-toggle.min.js"></script>
-	<script src="static/socket.io.min.js"></script>
+	<link rel="preload" href="static/open-iconic/css/open-iconic.css" as="style" onload="this.onload=null;this.rel='stylesheet'"><noscript><link rel="stylesheet" href="static/open-iconic/css/open-iconic.css"></noscript>
+	<link rel="preload" href="static/bootstrap-toggle.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'"><noscript><link rel="stylesheet" href="static/bootstrap-toggle.min.css"></noscript>
+	<link rel="preload" href="static/bootstrap.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'"><noscript><link rel="stylesheet" href="static/bootstrap.min.css"></noscript>
+	<script src="static/jquery-3.6.0.min.js" defer></script>
+	<script src="static/bootstrap-toggle.min.js" defer></script>
+	<script src="static/socket.io.min.js" defer></script>
 	<title>KoboldAI Client</title>
 	<meta charset="utf-8">
-	<link href="themes/Monochrome.css" rel="stylesheet" id="CSSTheme_A">
-	<link href="static/koboldai.css" rel="stylesheet">
-	<script defer src="static/koboldai.js"></script>
-	<script src="static/favicon.js"></script>
+	<link rel="preload" href="themes/Monochrome.css" as="style" onload="this.onload=null;this.rel='stylesheet'" id="CSSTheme_A"><noscript><link rel="stylesheet" href="themes/Monochrome.css"  id="CSSTheme_A"></noscript>
+	<link rel="stylesheet" href="static/koboldai.css">
+	<!--<link href="static/koboldai.css" rel="stylesheet">-->
+	<script defer src="static/koboldai.js" defer></script>
+	<script src="static/favicon.js" defer></script>
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 <body onload="chunk_delete_observer.observe(document.getElementById('Selected Text'), { subtree: true, childList: true, characterData: true });">
