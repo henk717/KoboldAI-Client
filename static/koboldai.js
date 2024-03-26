@@ -7992,15 +7992,36 @@ function screenshotWizardUpdateShownImages() {
 async function downloadScreenshot() {
 	// TODO: Upscale (eg transform with given ratio like 1.42 to make image
 	// bigger via screenshotTarget cloning)
-	const canvas = await html2canvas(screenshotTarget, {
-		width: screenshotTarget.clientWidth,
-		height: screenshotTarget.clientHeight - 1
-	});
+	
+	if (!document.getElementById("html2canvas")) {
+		let scriptEle = document.createElement("script");
 
-	canvas.style.display = "none";
-	document.body.appendChild(canvas);
-	$e("a", null, {download: "screenshot.png", href: canvas.toDataURL("image/png")}).click();
-	canvas.remove();
+		scriptEle.setAttribute("src", "/static/html2canvas.min.js");
+		scriptEle.setAttribute("type", "text/javascript");
+		scriptEle.setAttribute("async", false);
+		scriptEle.id = "html2canvas";
+
+		document.body.appendChild(scriptEle);
+
+		// success event 
+		scriptEle.addEventListener("load", () => {
+			downloadScreenshot();
+		});
+		// error event
+		scriptEle.addEventListener("error", (ev) => {
+			console.log("Error on loading file", ev);
+		});
+	} else {
+		const canvas = await html2canvas(screenshotTarget, {
+			width: screenshotTarget.clientWidth,
+			height: screenshotTarget.clientHeight - 1
+		});
+
+		canvas.style.display = "none";
+		document.body.appendChild(canvas);
+		$e("a", null, {download: "screenshot.png", href: canvas.toDataURL("image/png")}).click();
+		canvas.remove();
+	}
 }
 $el("#sw-download").addEventListener("click", downloadScreenshot);
 
