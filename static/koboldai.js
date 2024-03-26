@@ -3780,7 +3780,10 @@ function set_input_type(input) {
 		}
 	}
 	
-	if (input.getAttribute("textarea_name") == 'instruction_text') {
+	if (input.getAttribute("textarea_name") == 'instruction+prompt_text') {
+		document.getElementById("input_text").classList.remove("hidden");
+		document.getElementById("instruction_text").classList.remove("hidden");
+	
 		//We want to enable the normal submit with additional JS for on click so it expands the area
 		document.getElementById('input_text').classList.remove("hidden")
 		document.getElementById('input_text').style.width = "50%";
@@ -3790,6 +3793,8 @@ function set_input_type(input) {
 	} else {
 		document.getElementById('input_text').removeEventListener("click", resize_instruction);
 		document.getElementById('input_text').style.width = "100%";
+		document.getElementById('instruction_text').style.width = "100%";
+		document.getElementById('instruction_text').style.marginLeft = '0%';
 	}
 	
 }
