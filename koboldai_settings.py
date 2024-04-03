@@ -769,8 +769,8 @@ class model_settings(settings):
         self.horde_queue_position = 0
         self.horde_queue_size = 0
         self.use_alt_rep_pen = False
-        self.instruction_start = ""
-        self.instruction_end = ""
+        self.instruction_start = """Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.\n\n### Instruction:\n"""
+        self.instruction_end = """\n### Response:\n"""
         self.enable_instruction_mode = False
         
         
