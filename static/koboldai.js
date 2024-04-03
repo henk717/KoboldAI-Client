@@ -797,6 +797,9 @@ function do_story_text_updates(action) {
 				text_area.contentEditable = false;
 			}
 			
+			//Grr Chrome is now showing ascii 29 as a square. I swore it didn't before....
+			hide_ascii_29(text_area);
+			
 			//Add text to game screen
 			if (['InstructionFooter', 'InstructionHeader', 'InstructionUser'].includes(action_text_item['type'])) {
 				instruction_area.append(text_area);
@@ -820,6 +823,15 @@ function do_story_text_updates(action) {
 	  (el) => el.classList.remove('last-update')
 	);
 	chunk_element.classList.add("last-update");
+}
+
+function hide_ascii_29(paragraph) {
+	const regex = new RegExp(String.fromCharCode(29), "gi");
+	const text = paragraph.innerHTML;
+	const newText = text.replace(regex, (match) => {
+		return '<span class="ascii_29 hidden">' + match + '</span>';
+	});
+	paragraph.innerHTML = newText;
 }
 
 function do_wi_highlights(action_data) {
@@ -3530,7 +3542,16 @@ function gametextwatcher(records) {
 				original_text = original_text[0]
 			}
 		}
+		
+		//Because chrome displays character 29 differently AND doesn't return hidden span text we have to do some extra work to find those characters
+		//let temp = chunk.cloneNode(true)
+		for (item of chunk.getElementsByClassName("ascii_29")) {
+			item.classList.remove("hidden");
+		}
 		chunk_text = chunk.innerText.split(String.fromCharCode(29));
+		for (item of chunk.getElementsByClassName("ascii_29")) {
+			item.classList.add("hidden");
+		}
 		if (chunk_text.length > 2) {
 			chunk_text = chunk_text[0].slice(0, -1) + String.fromCharCode(29) + chunk_text[2];
 		} else {
@@ -3625,8 +3646,13 @@ function savegametextchanges() {
 			chunk = document.getElementById("Selected Text Chunk " + chunk_id);
 		}
 		if (chunk) {
-			
+			for (item of chunk.getElementsByClassName("ascii_29")) {
+				item.classList.remove("hidden");
+			}
 			update_game_text(parseInt(chunk.getAttribute("chunk")), chunk.innerText);
+			for (item of chunk.getElementsByClassName("ascii_29")) {
+				item.classList.add("hidden");
+			}
 		} else {
 			update_game_text(parseInt(chunk_id), "");
 		}
