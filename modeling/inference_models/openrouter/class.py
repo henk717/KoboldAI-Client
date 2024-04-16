@@ -204,9 +204,7 @@ class model_backend(api_handler_model_backend):
             #"logit_bias": {}
             
         }
-
-        print(gen_settings)
-
+        
         url=self.serverurl
         headers={
                 "Authorization":"Bearer " + self.key,
