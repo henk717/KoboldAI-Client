@@ -1,7 +1,5 @@
-import torch
-import requests
-import numpy as np
-from typing import List, Optional, Union
+import requests, json
+from typing import List, Optional
 import os
 
 import utils
@@ -34,6 +32,7 @@ class model_backend(api_handler_model_backend):
         super().__init__()
         self.url = "https://api.goose.ai/v1/engines"
         self.source = "GooseAI"
+        self.pres_pen = 0
 
         self.post_token_hooks = [
             #PostTokenHooks.stream_tokens,
@@ -54,11 +53,54 @@ class model_backend(api_handler_model_backend):
             #post_token_probs=True,
         )
         #self._old_stopping_criteria = None
+
+    def get_requested_parameters(self, model_name, model_path, menu_path, parameters = {}, loaded_parameters = {}):
+
+        default_parameters = {'pres_pen': 0}
+
+        if loaded_parameters == {}:
+            loaded_parameters = self.read_settings_from_file()
+
+        for key in default_parameters:
+            if key not in loaded_parameters:
+                loaded_parameters[key] = default_parameters[key]
+
+        self.source = model_name
+
+        requested_parameters = super().get_requested_parameters(model_name, model_path, menu_path, parameters, loaded_parameters)
+        requested_parameters.append({
+            "uitype": "slider",
+            "unit": "float",
+            "label": "Presence Penalty",
+            "id": "pres_pen",
+            "min": -2.0,
+            "max": 2.0,
+            "step": 0.05,
+            "default": loaded_parameters['pres_pen'],
+            "tooltip": "(only some models) Adjusts how often the model repeats specific tokens already used in the input. Higher values make such repetition less likely, while negative values do the opposite. Token penalty does not scale with the number of occurrences. Negative values will encourage token reuse.",
+            "menu_path": "Configuration",
+            "extra_classes": "",
+            "refresh_model_inputs": False
+        })
+        return requested_parameters
+    
+    def set_input_parameters(self, parameters):
+        super().set_input_parameters(parameters)
+        self.pres_pen = parameters['pres_pen']
+
+    def _save_settings(self, settings={}):
+        settings.update({
+                        "pres_pen": self.pres_pen,
+                    })
+        super()._save_settings(settings)
     
     def is_valid(self, model_name, model_path, menu_path):
         return model_name == "GooseAI"
     
-    
+    def get_supported_gen_modes(self) -> List[GenerationMode]:
+        return super().get_supported_gen_modes() + [
+            GenerationMode.UNTIL_EOS
+        ]
     
     def get_models(self):
         if self.key == "":

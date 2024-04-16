@@ -8,7 +8,6 @@ import numpy as np
 import time
 from typing import List, Optional, Union
 import os
-from enum import Enum
 
 import utils
 from logger import logger
@@ -87,28 +86,22 @@ class model_backend(InferenceModel):
         super().__init__()
         self.key = ""
         
-        self.pad_token_id= -1
-
-        self.pres_pen = 0
-        self.freq_pen = 0
+        self.pad_token_id= -1 #Should be the token ID for "pad"
     
     def is_valid(self, model_name, model_path, menu_path):
         return True
     
-    def get_requested_parameters(self, model_name, model_path, menu_path, parameters = {}):
-        saved_data = {'key': "", 'freq_pen': 0, 'pres_pen': 0}
-        if os.path.exists("settings/{}.model_backend.settings".format(self.source)) and 'colaburl' not in vars(self):
-            with open("settings/{}.model_backend.settings".format(self.source), "r") as f:
-                try:
-                    temp = json.load(f)
-                    for key in temp:
-                        saved_data[key] = temp[key]
-                    if saved_data!=None and saved_data['key']!="":
-                        self.key = saved_data['key']
-                except:
-                    pass
+    def get_requested_parameters(self, model_name, model_path, menu_path, parameters = {}, loaded_parameters = {}):
+
+        if loaded_parameters == {}:
+            loaded_parameters = self.read_settings_from_file()
+
+        if 'key' in loaded_parameters and loaded_parameters['key']!="":
+            self.key = loaded_parameters['key']
+
         if 'key' in parameters:
             self.key = parameters['key']
+        
         self.source = model_name
 
         requested_parameters = []
@@ -138,68 +131,49 @@ class model_backend(InferenceModel):
                 'children': self.get_models(),
 
             }])
-        requested_parameters.append({ #Could these two be in the regular settings menu somehow?
-            "uitype": "slider",
-            "unit": "float",
-            "label": "Frequency Penalty",
-            "id": "freq_pen",
-            "min": -2.0,
-            "max": 2.0,
-            "step": 0.05,
-            "default": saved_data['freq_pen'],
-            "tooltip": "(only some models) This setting aims to control the repetition of tokens based on how often they appear in the input. It tries to use less frequently those tokens that appear more in the input, proportional to how frequently they occur. Token penalty scales with the number of occurrences. Negative values will encourage token reuse.",
-            "menu_path": "Configuration",
-            "extra_classes": "",
-            "refresh_model_inputs": False
-        })
-        requested_parameters.append({
-            "uitype": "slider",
-            "unit": "float",
-            "label": "Presence Penalty",
-            "id": "pres_pen",
-            "min": -2.0,
-            "max": 2.0,
-            "step": 0.05,
-            "default": saved_data['pres_pen'],
-            "tooltip": "(only some models) Adjusts how often the model repeats specific tokens already used in the input. Higher values make such repetition less likely, while negative values do the opposite. Token penalty does not scale with the number of occurrences. Negative values will encourage token reuse.",
-            "menu_path": "Configuration",
-            "extra_classes": "",
-            "refresh_model_inputs": False
-        })
         return requested_parameters
         
     def set_input_parameters(self, parameters):
+        super().set_input_parameters(parameters)
         self.key = parameters['key'].strip()
         self.model_name = parameters['model']
-        self.pres_pen = parameters['pres_pen']
-        self.freq_pen = parameters['freq_pen']
         self.plaintext_stoppers = []
 
     def get_models(self):
         raise NotImplementedError
-        
-            
 
     def _load(self, save_model: bool, initial_load: bool) -> None:
         self.tokenizer = self._get_tokenizer("gpt2")
 
-    def _save_settings(self):
-        with open("settings/{}.model_backend.settings".format(self.source), "w") as f:
-            json.dump(
+    def _save_settings(self, settings={}):
+        settings.update(
                     {
                         "key": self.key,
-                        "pres_pen": self.pres_pen,
-                        "freq_pen": self.freq_pen
-                    }, 
+                    }
+                )
+        self.write_settings_to_file(settings)
+            
+    def write_settings_to_file(self, settings):
+        with open("settings/{}.model_backend.settings".format(self.source), "w") as f:
+            json.dump(
+                    settings, 
                     f,
                     indent=""
                 )
+            
+    def read_settings_from_file(self):
+        if os.path.exists("settings/{}.model_backend.settings".format(self.source)):
+            with open("settings/{}.model_backend.settings".format(self.source), "r") as f:
+                try:
+                    return json.load(f)
+                except:
+                    return {}
+        else:
+            return {}
 
     
     def get_supported_gen_modes(self) -> List[GenerationMode]:
-        return super().get_supported_gen_modes() + [
-            GenerationMode.UNTIL_EOS
-        ]
+        return super().get_supported_gen_modes()
 
     def core_generate( #Overwriting the core_generate function with a copy and hacking it to work with API instead. Lots of the code here could *probably* be thrown our entirely, but I'm not entirely sure what it all does.
         self,
@@ -319,7 +293,7 @@ class model_backend(InferenceModel):
         gen_mode: Optional[GenerationMode] = GenerationMode.STANDARD,
         **kwargs,
     ) -> List:
-        """Lowest level model-agnostic generation function. To be overridden by model implementation.
+        """Lowest level model-agnostic generation function. To be overridden by endpoint implementation.
 
         Args:
             prompt_plaintext (str): Prompt as plaintext
