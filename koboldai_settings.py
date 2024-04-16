@@ -579,7 +579,7 @@ class koboldai_vars(object):
         if name[0] == "_" or name == "tokenizer":
             super().__setattr__(name, value)
         if name[0] != "_":
-            #Send it to the corrent _setting class
+            #Send it to the current _setting class
             if name in self._model_settings.__dict__:
                 setattr(self._model_settings, name, value)
             elif name in self._user_settings.__dict__:
@@ -739,6 +739,8 @@ class model_settings(settings):
         self.genamt      = 200      # Amount of text for each action to generate
         self.ikgen       = 200     # Number of characters for InferKit to generate
         self.rep_pen     = 1.1     # Default generator repetition_penalty
+        self.freq_pen    = 0.0     # Default generator frequency penalty
+        self.pres_pen    = 0.0     # Default generator presence penalty
         self.rep_pen_slope = 1.0   # Default generator repetition penalty slope
         self.rep_pen_range = 2048  # Default generator repetition penalty range
         self.temp        = 0.5     # Default generator temperature
