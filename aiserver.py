@@ -638,7 +638,7 @@ def UI_2_log_history(message):
     web_log_history.append(data)
 
 from flask import Flask, render_template, Response, request, copy_current_request_context, send_from_directory, session, jsonify, abort, redirect, has_request_context, send_file
-from flask_socketio import SocketIO, emit, join_room, leave_room, namespace
+from flask_socketio import SocketIO, emit, join_room, leave_room
 from flask_socketio import emit as _emit
 from flask_session import Session
 from flask_compress import Compress
