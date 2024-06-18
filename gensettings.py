@@ -1021,6 +1021,22 @@ gensettingstf = [
     "name": "wigen_use_own_wi",
     "ui_level": 2
 	},
+    {
+ 	"uitype": "slider",
+ 	"unit": "int",
+ 	"label": "Unload Timer",
+ 	"id": "setauto_unload_timer",
+ 	"min": 0,
+ 	"max": 120,
+ 	"step": 15,
+ 	"default": 0,
+	"tooltip": "How many minutes to wait until pausing the model (unloads from VRAM). Set to 0 to disable.",
+    "menu_path": "Interface",
+    "sub_path": "UI",
+    "classname": "system",
+    "name": "auto_unload_timer",
+    "ui_level": 2
+ 	},
 ]
 
 gensettingsik =[{
