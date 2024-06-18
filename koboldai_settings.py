@@ -762,6 +762,7 @@ class model_settings(settings):
         self.horde_queue_position = 0
         self.horde_queue_size = 0
         self.use_alt_rep_pen = False
+        self.model_status = "unloaded"
         
         
 
