@@ -16,14 +16,14 @@
 #include <queue>
 #include <string>
 #include <math.h>
-
+#include <cstdint>
 #include "expose.h"
 #include "model_adapter.cpp"
 
 extern "C"
 {
 
-    std::string platformenv, deviceenv;
+    std::string platformenv, deviceenv, vulkandeviceenv;
 
     //return val: 0=fail, 1=(original ggml, alpaca), 2=(ggmf), 3=(ggjt)
     static FileFormat file_format = FileFormat::BADFORMAT;
@@ -58,6 +58,23 @@ extern "C"
         deviceenv = "GGML_OPENCL_DEVICE="+std::to_string(devices);
         putenv((char*)platformenv.c_str());
         putenv((char*)deviceenv.c_str());
+
+        std::string vulkan_info_raw = inputs.vulkan_info;
+        std::string vulkan_info_str = "";
+        for (size_t i = 0; i < vulkan_info_raw.length(); ++i) {
+            vulkan_info_str += vulkan_info_raw[i];
+            if (i < vulkan_info_raw.length() - 1) {
+                vulkan_info_str += ",";
+            }
+        }
+        if(vulkan_info_str=="")
+        {
+            vulkan_info_str = "0";
+        }
+
+        vulkandeviceenv = "GGML_VK_VISIBLE_DEVICES="+vulkan_info_str;
+        putenv((char*)vulkandeviceenv.c_str());
+
         executable_path = inputs.executable_path;
 
         if(file_format==FileFormat::GPTJ_1 || file_format==FileFormat::GPTJ_2 || file_format==FileFormat::GPTJ_3 || file_format==FileFormat::GPTJ_4  || file_format==FileFormat::GPTJ_5)
@@ -169,13 +186,13 @@ extern "C"
             {
                 printf("\n---\nIdentified as RWKV model: (ver %d)\nAttempting to Load...\n---\n", file_format);
             }
-            else if(file_format==FileFormat::GGUF_FALCON)
+            else if(file_format==FileFormat::GGUF_GENERIC)
             {
-                printf("\n---\nIdentified as FALCON model: (ver %d)\nAttempting to Load...\n---\n", file_format);
+                printf("\n---\nIdentified as GGUF model: (ver %d)\nAttempting to Load...\n---\n", file_format);
             }
             else
             {
-                printf("\n---\nIdentified as LLAMA model: (ver %d)\nAttempting to Load...\n---\n", file_format);
+                printf("\n---\nUnidentified Model Encountered: (ver %d)\n---\n", file_format);
             }
             ModelLoadResult lr = gpttype_load_model(inputs, file_format, file_format_meta);
             if (lr == ModelLoadResult::FAIL || lr == ModelLoadResult::RETRY_LOAD)
@@ -189,9 +206,18 @@ extern "C"
         }
     }
 
-    generation_outputs generate(const generation_inputs inputs, generation_outputs &output)
+    generation_outputs generate(const generation_inputs inputs)
     {
-        return gpttype_generate(inputs, output);
+        return gpttype_generate(inputs);
+    }
+
+    bool sd_load_model(const sd_load_model_inputs inputs)
+    {
+        return sdtype_load_model(inputs);
+    }
+    sd_generation_outputs sd_generate(const sd_generation_inputs inputs)
+    {
+        return sdtype_generate(inputs);
     }
 
     const char * new_token(int idx) {
@@ -216,6 +242,10 @@ extern "C"
     }
     int get_last_token_count() {
         return last_token_count;
+    }
+    int get_last_seed()
+    {
+        return last_seed;
     }
     int get_total_gens() {
         return total_gens;
@@ -242,4 +272,6 @@ extern "C"
         output.ids = toks.data(); //this may be slightly unsafe
         return output;
     }
+
+
 }

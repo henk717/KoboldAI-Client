@@ -120,7 +120,6 @@ class LazyTensor:
 class TorchLazyTensor(LazyTensor):
     def __init__(
         self,
-        storage_type,
         key: str,
         location: str,
         dtype: Optional[torch.dtype] = None,
@@ -130,7 +129,6 @@ class TorchLazyTensor(LazyTensor):
         requires_grad=False,
         backward_hooks: Any = None,
     ):
-        self.storage_type = storage_type
         self.key = key
         self.location = location
         self.dtype = dtype
@@ -142,7 +140,7 @@ class TorchLazyTensor(LazyTensor):
         self.file_name = None
 
     def __view(self, f: Callable):
-        return f"{type(self).__name__}(storage_type={f(self.storage_type)}, key={f(self.key)}, location={f(self.location)}, dtype={f(self.dtype)}, seek_offset={f(self.seek_offset)}, shape={f(self.shape)}, stride={f(self.stride)}, requires_grad={f(self.requires_grad)}, backward_hooks={f(self.backward_hooks)})"
+        return f"{type(self).__name__}(key={f(self.key)}, location={f(self.location)}, dtype={f(self.dtype)}, seek_offset={f(self.seek_offset)}, shape={f(self.shape)}, stride={f(self.stride)}, requires_grad={f(self.requires_grad)}, backward_hooks={f(self.backward_hooks)})"
 
     def __repr__(self):
         return self.__view(repr)
@@ -248,8 +246,8 @@ class _LazyUnpickler(RestrictedUnpickler):
         assert (
             typename == "storage"
         ), f"Unknown typename for persistent_load, expected 'storage' but got '{typename}'"
-        storage_type, key, location, _ = saved_id[1:]
-        return TorchLazyTensor(storage_type, key, location)
+        key, location, _ = saved_id[1:]
+        return TorchLazyTensor(key, location)
 
     def load(self, *args, **kwargs):
         retval = super().load(*args, **kwargs)
@@ -262,7 +260,7 @@ def _rebuild_tensor(lazy_storage: LazyTensor, storage_offset, shape, stride):
     lazy_storage.stride = stride
     dtype = lazy_storage.storage_type.dtype
     if not isinstance(dtype, torch.dtype):
-        dtype = lazy_storage.storage_type(0).dtype
+        dtype = torch.float16
     lazy_storage.dtype = dtype
     lazy_storage.seek_offset = (
         storage_offset

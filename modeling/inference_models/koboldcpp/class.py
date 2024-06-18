@@ -60,6 +60,7 @@ class model_backend(InferenceModel):
         self.kcpp_noblas = False
         self.kcpp_noavx2 = False
         self.kcpp_nommap = False
+        self.kcpp_usevulkan = None
         self.kcpp_debugmode = 0
         self.kcpp_tensor_split_str = ""
         self.kcpp_tensor_split = None
@@ -98,7 +99,7 @@ class model_backend(InferenceModel):
                                     "extra_classes": "",
                                     'children': [{'text': 'Use No BLAS', 'value': 0}, {'text': 'Use OpenBLAS', 'value': 1}, {'text': 'Use CuBLAS', 'value': 2},
                                     {'text': 'Use CLBLast GPU #1', 'value': 3},{'text': 'Use CLBLast GPU #2', 'value': 4},{'text': 'Use CLBLast GPU #3', 'value': 5}
-                                    ,{'text': 'NoAVX2 Mode (Old CPU)', 'value': 6},{'text': 'Failsafe Mode (Old CPU)', 'value': 7}],
+                                    ,{'text': 'NoAVX2 Mode (Old CPU)', 'value': 6},{'text': 'Failsafe Mode (Old CPU)', 'value': 7},{'text': 'Use Vulkan GPU #1', 'value': 8},{'text': 'Use Vulkan GPU #2', 'value': 9}],
                                     })
         requested_parameters.append({
                                     "uitype": "text",
@@ -252,12 +253,16 @@ class model_backend(InferenceModel):
             self.kcpp_noavx2 = True
             self.kcpp_noblas = True
             self.kcpp_nommap = True
+        elif accel==8:
+            self.kcpp_usevulkan = [0]
+        elif accel==9:
+            self.kcpp_usevulkan = [1]
         pass
 
     def unload(self):
         print("Attemping to unload library")
         self.process.terminate()
-        
+
 
     def _load(self, save_model: bool, initial_load: bool) -> None:
         self.tokenizer = self._get_tokenizer("gpt2")
@@ -267,9 +272,9 @@ class model_backend(InferenceModel):
         blasbatchsize=self.kcpp_blasbatchsize, ropeconfig=[self.kcpp_ropescale, self.kcpp_ropebase], stream=False, smartcontext=self.kcpp_smartcontext,
         unbantokens=False, bantokens=None, usemirostat=None, forceversion=0, nommap=self.kcpp_nommap,
         usemlock=False, noavx2=self.kcpp_noavx2, debugmode=self.kcpp_debugmode, skiplauncher=True, hordeconfig=None, noblas=self.kcpp_noblas,
-        useclblast=self.kcpp_useclblast, usecublas=self.kcpp_usecublas, gpulayers=self.kcpp_gpulayers, tensor_split=self.kcpp_tensor_split, config=None,
-        onready='', multiuser=False, foreground=False, preloadstory=None, noshift=False, remotetunnel=False)
-        
+        useclblast=self.kcpp_useclblast, usecublas=self.kcpp_usecublas, usevulkan=self.kcpp_usevulkan, gpulayers=self.kcpp_gpulayers, tensor_split=self.kcpp_tensor_split, config=None,
+        onready='', multiuser=False, foreground=False, preloadstory=None, noshift=False, remotetunnel=False, ssl=False, benchmark=False, nocertify=False, sdconfig=None)
+
 
         #koboldcpp.main(kcppargs,False) #initialize library without enabling Lite http server
         (self.output_queue, self.input_queue, self.process) = koboldcpp.start_in_seperate_process(kcppargs)
@@ -301,17 +306,17 @@ class model_backend(InferenceModel):
         # Store context in memory to use it for comparison with generated content
         utils.koboldai_vars.lastctx = decoded_prompt
 
-        self.input_queue.put({'command': 'generate', 'data': [(decoded_prompt,max_new,utils.koboldai_vars.max_length,
-                                gen_settings.temp,int(gen_settings.top_k),gen_settings.top_a,gen_settings.top_p,
-                                gen_settings.typical,gen_settings.tfs,gen_settings.rep_pen,gen_settings.rep_pen_range),
-                               {"sampler_order": gen_settings.sampler_order, "use_default_badwordsids": utils.koboldai_vars.use_default_badwordsids}
+        self.input_queue.put({'command': 'generate', 'data': [(decoded_prompt,), {'max_length': max_new, 'max_context_length': utils.koboldai_vars.max_length,
+                                'temperature': gen_settings.temp, 'top_k': int(gen_settings.top_k), 'top_a': gen_settings.top_a, 'top_p': gen_settings.top_p,
+                                'typical_p': gen_settings.typical, 'tfs': gen_settings.tfs, 'rep_pen': gen_settings.rep_pen, 'rep_pen_range': gen_settings.rep_pen_range,
+                               "sampler_order": gen_settings.sampler_order, "use_default_badwordsids": utils.koboldai_vars.use_default_badwordsids}
                                 ]})
-        
-        #genresult = koboldcpp.generate(decoded_prompt,max_new,utils.koboldai_vars.max_length,
+
+        #genresult = koboldcpp.generate(decoded_prompt,"",max_new,utils.koboldai_vars.max_length,
         #gen_settings.temp,int(gen_settings.top_k),gen_settings.top_a,gen_settings.top_p,
         #gen_settings.typical,gen_settings.tfs,gen_settings.rep_pen,gen_settings.rep_pen_range,
         #sampler_order=gen_settings.sampler_order,use_default_badwordsids=utils.koboldai_vars.use_default_badwordsids)
-           
+
         genresult = []
         while True:
             data = self.output_queue.get()

@@ -18,4 +18,4 @@ fi
 export NEOReadDebugKeys=1
 export ClDeviceGlobalMemSizeAvailablePercent=100
 
-bin/micromamba run -r runtime -n koboldai-ipex python aiserver.py $*
+bin/micromamba run -r runtime -p runtime/envs/koboldai-ipex python aiserver.py $*

@@ -3,6 +3,7 @@
 const int stop_token_max = 16;
 const int ban_token_max = 16;
 const int tensor_split_max = 16;
+const int logit_bias_max = 16;
 // match kobold's sampler list and order
 enum samplers
 {
@@ -19,17 +20,21 @@ enum stop_reason
 {
     INVALID=-1,
     OUT_OF_TOKENS=0,
-    EOS_TOKEN=1,
+    EOS_TOKEN_HIT=1,
     CUSTOM_STOPPER=2,
+};
+struct logit_bias {
+    int32_t token_id;
+    float bias;
 };
 struct load_model_inputs
 {
     const int threads;
     const int blasthreads;
     const int max_context_length;
-    const int batch_size;
     const bool low_vram;
     const bool use_mmq;
+    const bool use_rowsplit;
     const char * executable_path;
     const char * model_filename;
     const char * lora_filename;
@@ -40,6 +45,7 @@ struct load_model_inputs
     const bool use_contextshift;
     const int clblast_info = 0;
     const int cublas_info = 0;
+    const char * vulkan_info;
     const int blasbatchsize = 512;
     const int debugmode = 0;
     const int forceversion = 0;
@@ -65,6 +71,7 @@ struct generation_inputs
     const float tfs;
     const float rep_pen;
     const int rep_pen_range;
+    const float presence_penalty = 0.0f;
     const int mirostat = 0;
     const float mirostat_eta;
     const float mirostat_tau;
@@ -76,16 +83,47 @@ struct generation_inputs
     const char * grammar;
     const bool grammar_retain_state;
     const bool quiet = false;
+    const float dynatemp_range = 0.0f;
+    const float dynatemp_exponent = 1.0f;
+    const float smoothing_factor = 0.0f;
+    const logit_bias logit_biases[logit_bias_max];
+
 };
 struct generation_outputs
 {
     int status = -1;
-    char text[32768]; //32kb should be enough for any response
+    const char * text; //response will now be stored in c++ allocated memory
 };
 struct token_count_outputs
 {
     int count = 0;
     int * ids; //we'll just use shared memory for this one, bit of a hack
+};
+struct sd_load_model_inputs
+{
+    const char * model_filename;
+    const int clblast_info = 0;
+    const int cublas_info = 0;
+    const char * vulkan_info;
+    const int threads;
+    const int quant = 0;
+    const int debugmode = 0;
+};
+struct sd_generation_inputs
+{
+    const char * prompt;
+    const char * negative_prompt;
+    const float cfg_scale;
+    const int sample_steps;
+    const int width;
+    const int height;
+    const int seed;
+    const char * sample_method;
+};
+struct sd_generation_outputs
+{
+    int status = -1;
+    const char * data = "";
 };
 
 extern std::string executable_path;
@@ -96,5 +134,6 @@ extern bool generation_finished;
 extern float last_eval_time;
 extern float last_process_time;
 extern int last_token_count;
+extern int last_seed;
 extern int total_gens;
 extern stop_reason last_stop_reason;

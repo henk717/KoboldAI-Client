@@ -174,6 +174,8 @@ class LazyloadPatches:
         load_in_8bit=False,
         is_quantized=False,
         is_safetensors=False,
+        hf_quantizer=None,
+        unexpected_keys=None,
         keep_in_fp32_modules=None,
     ):
         """

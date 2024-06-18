@@ -50,7 +50,8 @@ int main(int argc, char ** argv) {
 
     // init LLM
 
-    llama_backend_init(params.numa);
+    llama_backend_init();
+    llama_numa_init(params.numa);
 
     // initialize the model
 
@@ -69,6 +70,7 @@ int main(int argc, char ** argv) {
 
     std::vector<llama_token> tokens_list;
     tokens_list = ::llama_tokenize(model, params.prompt, true);
+
     const int n_kv_req = tokens_list.size() + (n_len - tokens_list.size())*n_parallel;
 
     // initialize the context
@@ -90,7 +92,7 @@ int main(int argc, char ** argv) {
 
     const int n_ctx    = llama_n_ctx(ctx);
 
-    LOG_TEE("\n%s: n_len = %d, n_ctx = %d, n_batch = %d, n_parallel = %d, n_kv_req = %d\n", __func__, n_len, n_ctx, ctx_params.n_batch, n_parallel, n_kv_req);
+    LOG_TEE("\n%s: n_len = %d, n_ctx = %d, n_batch = %u, n_parallel = %d, n_kv_req = %d\n", __func__, n_len, n_ctx, ctx_params.n_batch, n_parallel, n_kv_req);
 
     // make sure the KV cache is big enough to hold all the prompt and generated tokens
     if (n_kv_req > n_ctx) {
