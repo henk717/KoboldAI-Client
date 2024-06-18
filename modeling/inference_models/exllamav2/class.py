@@ -276,8 +276,8 @@ class model_backend(InferenceModel):
         self.cache = None
         self.generator = None
 
-        self.model_name = ""
-        self.path = None
+        #self.model_name = ""
+        #self.path = None
 
         with torch.no_grad():
             with warnings.catch_warnings():
