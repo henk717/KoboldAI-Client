@@ -43,6 +43,12 @@
 						<span class="material-icons-outlined cursor" tooltip="Load Model" style="font-size: 1.4em;">folder_open</span>
 						<span class="button_label">Load Model</span>
 					</button>
+					<button class="settings_button model_pause_button var_sync_alt_model_model_status var_sync_alt_model_model" onclick="socket.emit('pause_model', {});">
+						<span class="material-icons-outlined cursor" tooltip="Pause Model" style="font-size: 1.4em;">pause</span>
+					</button>
+					<button class="settings_button model_play_button var_sync_alt_model_model_status var_sync_alt_model_model" onclick="socket.emit('unpause_model', {});">
+						<span class="material-icons-outlined cursor" tooltip="Pause Model" style="font-size: 1.4em;">play_arrow</span>
+					</button>
 				{% endif %}
 				<select class="var_sync_model_selected_preset settings_select presets" onchange='sync_to_server(this)'><option>Preset</option></select>
 			</div>

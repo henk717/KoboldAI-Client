@@ -1872,7 +1872,7 @@ def load_model(model_backend, initial_load=False):
         logger.message(f"KoboldAI has finished loading and is available at the following link for the Classic UI: {koboldai_vars.cloudflare_link}/classic")
         logger.message(f"KoboldAI has finished loading and is available at the following link for KoboldAI Lite: {koboldai_vars.cloudflare_link}/lite")
         logger.message(f"KoboldAI has finished loading and is available at the following link for the API: {koboldai_vars.cloudflare_link}/api")
-
+    koboldai_vars.reset_model_unload_timer()
 
 # Setup IP Whitelisting
 # Define a function to check if IP is allowed
@@ -3256,7 +3256,12 @@ def actionsubmit(
     # Ignore new submissions if the AI is currently busy
     if koboldai_vars.aibusy and not ignore_aibusy:
         return
-
+    
+    #Check to see if the model is loaded
+    if koboldai_vars.model_status != "loaded":
+        UI_2_unpause_model(None)
+    
+    
     while(True):
         set_aibusy(1)
         koboldai_vars.actions.clear_unused_options()
@@ -6340,7 +6345,52 @@ def UI_2_load_model(data):
     logger.debug("Loading model with user input of: {}".format(data))
     model_backends[data['plugin']].set_input_parameters(data)
     load_model(data['plugin'])
+    if model.model in ["Read Only", ""]:
+        koboldai_vars.model_status = "unloaded"
+    else:
+        koboldai_vars.model_status = "loaded"
     #load_model(use_gpu=data['use_gpu'], gpu_layers=data['gpu_layers'], disk_layers=data['disk_layers'], online_model=data['online_model'], url=koboldai_vars.colaburl, use_8_bit=data['use_8_bit'])
+
+
+#==================================================================#
+# Event triggered when user pauses a model
+#==================================================================#
+@socketio.on('pause_model')
+@logger.catch
+def UI_2_pause_model(data):
+    logger.info("Pausing model (unloading)")
+    if 'model' in globals():
+        model.unload()
+        koboldai_vars.model_status="unloaded"
+        
+        
+#==================================================================#
+# Event triggered when user un-pauses a model
+#==================================================================#
+@socketio.on('unpause_model')
+@logger.catch
+def UI_2_unpause_model(data):
+    logger.info("Un-pausing model (loading)")
+    if 'model' in globals():
+        model.load()
+        koboldai_vars.model_status="loaded"
+
+#==================================================================#
+# Auto-pause option
+#==================================================================#
+@app.before_request
+@logger.catch
+def every_page_load():
+    koboldai_vars.reset_model_unload_timer()
+    
+        
+def check_model_unload_timer():
+    if koboldai_vars._model_unload_timer is not None:
+        if datetime.datetime.now() > koboldai_vars._model_unload_timer:
+            logger.info(koboldai_vars._model_unload_timer)
+            UI_2_pause_model(None)
+            koboldai_vars._model_unload_timer = None
+
 
 #==================================================================#
 # Event triggered when load story is clicked
@@ -6842,6 +6892,7 @@ def socket_io_relay(queue, socketio):
                 data = queue.get()
                 socketio.emit(data[0], data[1], **data[2])
         time.sleep(0.2)
+        check_model_unload_timer()
         
 
 
