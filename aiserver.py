@@ -3256,7 +3256,12 @@ def actionsubmit(
     # Ignore new submissions if the AI is currently busy
     if koboldai_vars.aibusy and not ignore_aibusy:
         return
-
+    
+    #Check to see if the model is loaded
+    if koboldai_vars.model_status != "loaded":
+        UI_2_unpause_model(None)
+    
+    
     while(True):
         set_aibusy(1)
         koboldai_vars.actions.clear_unused_options()
