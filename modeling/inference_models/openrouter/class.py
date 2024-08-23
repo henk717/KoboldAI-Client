@@ -153,7 +153,7 @@ class model_backend(api_handler_model_backend):
                 "Content-Type": "application/json"
             }
         
-        call={"url": url, "reqdata": reqdata, "headers": headers}
+        call={"url": url, "reqdata": reqdata, "headers": headers, "timeout": self.timeout}
 
         items=batch_api_call(call, batch_count) #Call the API with the batch of requests
 

@@ -1,5 +1,5 @@
 #Okay, so this whole thing is a bit of an abomination, overwriting the core_generate function from the standard inference model in order to tie into the standard functionality that the rest of the codebase expects. 
-#It makes the API interact properly with a fair few features, which I thought was epic. Several parts might also be possible to split out into a more generalized API backend, but that's a task for another day.
+#It makes the API interact properly with a fair few features.
 
 from multiprocessing.dummy import Pool
 import torch
@@ -33,7 +33,8 @@ class APIError(Exception):
     def __init__(self, error_type: str, error_message) -> None:
         super().__init__(f"{error_type}: {error_message}")
 
-def api_caller(call, responses, i): #Define a function to call the API, so we can multithread it for more SPEED, just don't accidentally get your key banned for DDOS or something
+def api_caller(call, i) -> dict: #Define a function to call the API, so we can multithread it for more SPEED, just don't accidentally get your key banned for DDOS or something
+
             if not utils.koboldai_vars.quiet:
                 print("Worker", i, "calling API")
 
@@ -41,41 +42,54 @@ def api_caller(call, responses, i): #Define a function to call the API, so we ca
                 call["url"],
                 json=call["reqdata"],
                 headers=call["headers"],
+                timeout=call["timeout"]
             )
             if not utils.koboldai_vars.quiet:
                 print(response)
             
-            if not response.ok: ##TODO: Check whether this error handling actually works. Dubious
-                # Send error message to web client
-                if "error" in response:
-                    error_type = response["error"]["type"]
-                    error_message = response["error"]["message"]
-                else:
-                    error_type = "Unknown"
-                    error_message = "Unknown"
-                raise APIError(error_type, error_message)
-            responses[i] = response.json()
+            if not response.ok:
+                error_type = "Unknown Error"
+                error_message = response.status_code
+                if not ("error" in response is None):
+                    try:
+                        error_response = response.json()
+                        error_type = error_response["error"]["code"]
+                        error_message = error_response["error"]["message"]
+                    except:
+                        if not utils.koboldai_vars.quiet:
+                            print("Error in error handling")
+                return APIError(error_type, error_message) #Raised errors within a thread pool are lost, hence we must return it instead.
+            return response.json()
 
 def api_call(call)->list: #A wrapper for the api_caller function that only calls the API once, and returns the result. This is used for single calls, and is not multithreaded.
-    responses=[None]*1
-    api_caller(call, responses, 0)
-    if responses[0] is None:
-        raise APIError("Unknown", "API call failed: No response received.")
-    return responses[0]
+    response = api_caller(call, 0)
+    if response is None:
+        raise APIError("Unknown", "API call failed: No response body received.")
+    elif type(response) is APIError:
+        raise response
+    return response
 
 def batch_api_call(call, batch_count)->list: #A wrapper for the api_caller function that calls the API multiple times, and returns the results. This is used for batch calls, and is multithreaded.
     responses=[None]*batch_count
     pool = Pool(batch_count)
-    for i in range(batch_count):
-        pool.apply_async(api_caller, args=(call, responses, i))
+    tasks_data = [(call, i) for i in range(0, batch_count)]
+    responses = pool.starmap(api_caller, [tasks_data[batch] for batch in range(0, batch_count)])
 
     pool.close()
-    pool.join() #Pool.join() waits for all the processes to finish, and then the program continues. This is needed to ensure that the program doesn't continue before the processes are finished, as that would cause a crash.
-    #Be aware that if an API request fails, we might get stuck here indefinitely. TODO: This is a potential issue that should be addressed in the future.
+    pool.join() #Pool.join() waits for all the processes to finish, and then the program continues. "Timeout" in call sets the upper practical limit for this step.
 
-    for item in responses: #Check if any of the items are None, and raise an error if they are
+    errors = []
+    count = 0
+
+    for item in responses: #Check if any of the items are None, and return an error if they are
         if item is None:
-            raise APIError("Unknown", "API call failed: No response received.")
+            errors.append((count, APIError("Unknown", "API call failed: No response body received.")))
+        elif type(item) is APIError:
+            errors.append((count, item))
+        count+=1 #neccessary to keep track of separate errors.
+
+    if errors:
+        raise Exception(errors) #We are now able to raise all errors. Ideally we'd like to be able to rescue valid responses as well.'
     return responses
     
 
@@ -85,6 +99,7 @@ class model_backend(InferenceModel):
     def __init__(self):
         super().__init__()
         self.key = ""
+        self.timeout = 120.0
         
         self.pad_token_id= -1 #Should be the token ID for "pad"
     
@@ -99,8 +114,14 @@ class model_backend(InferenceModel):
         if 'key' in loaded_parameters and loaded_parameters['key']!="":
             self.key = loaded_parameters['key']
 
+        if 'timeout' in loaded_parameters and loaded_parameters['timeout']!=None:
+            self.timeout = loaded_parameters['timeout']
+
         if 'key' in parameters:
             self.key = parameters['key']
+
+        if 'timeout' in parameters:
+            self.key = parameters['timeout']
         
         self.source = model_name
 
@@ -130,6 +151,20 @@ class model_backend(InferenceModel):
                 "extra_classes": "",
                 'children': self.get_models(),
 
+            },
+            {
+                "uitype": "slider",
+                "unit": "int",
+                "label": "API Timeout (s)",
+                "unit": "int",
+                "min": 0,
+                "max": 300,
+                "step": 1,
+                "default": self.timeout,
+                "tooltip": "Timeout when awaiting responses from API.",
+                "menu_path": "",
+                "refresh_model_inputs": False,
+                "extra_classes": ""
             }])
         return requested_parameters
         
