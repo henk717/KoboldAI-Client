@@ -27,7 +27,7 @@ class HordeException(Exception):
 class model_backend(InferenceModel):
     def __init__(self) -> None:
         super().__init__()
-        self.url = "https://horde.koboldai.net"
+        self.url = "https://aihorde.net"
         self.key = "0000000000"
         self.models = []
         self.model_name = "Horde"
