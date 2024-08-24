@@ -121,7 +121,7 @@ class model_backend(InferenceModel):
             self.key = parameters['key']
 
         if 'timeout' in parameters:
-            self.key = parameters['timeout']
+            self.timeout = parameters['timeout']
         
         self.source = model_name
 
