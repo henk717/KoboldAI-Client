@@ -434,6 +434,8 @@ model_menu = {
         MenuModel("KoboldAI API", "API", model_type=MenuModelType.ONLINE_API, model_backend="KoboldAI API"),
         MenuModel("Basic Model API", "Colab", model_type=MenuModelType.ONLINE_API, model_backend="KoboldAI Old Colab Method"),
         MenuModel("KoboldAI Horde", "CLUSTER", model_type=MenuModelType.ONLINE_API, model_backend="Horde"),
+        MenuModel("OpenRouter API (requires API key)", "OpenRouter", model_type=MenuModelType.ONLINE_API, model_backend="OpenRouter"),
+        MenuModel("Neuro.Mancer API (requires API key)", "Mancer", model_type=MenuModelType.ONLINE_API, model_backend="Mancer"),
         MenuFolder("Return to Main Menu", "mainmenu"),
     ]
 }
@@ -1741,7 +1743,7 @@ def load_model(model_backend, initial_load=False):
         time.sleep(0.1)    
     
     # If transformers model was selected & GPU available, ask to use CPU or GPU
-    if(not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
+    if(not koboldai_vars.use_colab_tpu and koboldai_vars.model not in ["InferKit", "Colab", "API", "CLUSTER", "OAI", "GooseAI" , "OpenRouter", "Mancer", "ReadOnly", "TPUMeshTransformerGPTJ", "TPUMeshTransformerGPTNeoX"]):
         # loadmodelsettings()
         # loadsettings()
         logger.init("GPU support", status="Searching")
@@ -8361,7 +8363,7 @@ class WorldInfoUIDsSchema(WorldInfoEntriesUIDsSchema):
     folders: List[WorldInfoFolderSchema] = fields.List(fields.Nested(WorldInfoFolderUIDsSchema), required=True)
 
 class ModelSelectionSchema(KoboldSchema):
-    model: str = fields.String(required=True, validate=validate.Regexp(r"^(?!\s*NeoCustom)(?!\s*GPT2Custom)(?!\s*TPUMeshTransformerGPTJ)(?!\s*TPUMeshTransformerGPTNeoX)(?!\s*GooseAI)(?!\s*OAI)(?!\s*InferKit)(?!\s*Colab)(?!\s*API).*$"), metadata={"description": 'Hugging Face model ID, the path to a model folder (relative to the "models" folder in the KoboldAI root folder) or "ReadOnly" for no model'})
+    model: str = fields.String(required=True, validate=validate.Regexp(r"^(?!\s*NeoCustom)(?!\s*GPT2Custom)(?!\s*TPUMeshTransformerGPTJ)(?!\s*TPUMeshTransformerGPTNeoX)(?!\s*GooseAI)(?!\s*OpenRouter)(?!\s*Mancer)(?!\s*OAI)(?!\s*InferKit)(?!\s*Colab)(?!\s*API).*$"), metadata={"description": 'Hugging Face model ID, the path to a model folder (relative to the "models" folder in the KoboldAI root folder) or "ReadOnly" for no model'})
     backend: Optional[str] = fields.String(required=False, validate=validate.OneOf(model_backends.keys()))
 
 def _generate_text(body: GenerationInputSchema):

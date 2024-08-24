@@ -230,6 +230,7 @@ This project contains work from the following contributors :
 *   Arrmansa - Breakmodel support for other projects that served as a basis for VE FORBRYDERNE's integration.
 *   Jojorne - Small improvements to the response selection for gens per action.
 *   OccultSage (GooseAI) - Improved support for GooseAI/OpenAI
+*	Iceblade - Rework & improvements in support for API-based LLM providers
 
 As well as various Model creators who will be listed near their models, and all the testers who helped make this possible!
 
