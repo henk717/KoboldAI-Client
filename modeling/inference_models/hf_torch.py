@@ -266,7 +266,7 @@ class HFTorchInferenceModel(HFInferenceModel):
                 kwargs.setdefault("pad_token_id", 2)
             return new_sample.old_sample(self, *args, **kwargs)
 
-        new_sample.old_sample = transformers.GenerationMixin.sample
+        new_sample.old_sample = transformers.GenerationMixin._sample
         use_core_manipulations.sample = new_sample
 
         # PEFT Loading. This MUST be done after all save_pretrained calls are

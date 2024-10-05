@@ -46,8 +46,8 @@ class use_core_manipulations:
             )
 
         if use_core_manipulations.sample:
-            use_core_manipulations.old_sample = transformers.GenerationMixin.sample
-            transformers.GenerationMixin.sample = use_core_manipulations.sample
+            use_core_manipulations.old_sample = transformers.GenerationMixin._sample
+            transformers.GenerationMixin._sample = use_core_manipulations.sample
 
         if use_core_manipulations.get_stopping_criteria:
             use_core_manipulations.old_get_stopping_criteria = (
@@ -69,7 +69,7 @@ class use_core_manipulations:
             ), "Patch leak: THE MONKEYS HAVE ESCAPED"
 
         if use_core_manipulations.old_sample:
-            transformers.GenerationMixin.sample = use_core_manipulations.old_sample
+            transformers.GenerationMixin._sample = use_core_manipulations.old_sample
         else:
             assert (
                 not use_core_manipulations.sample
