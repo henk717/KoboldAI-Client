@@ -1845,6 +1845,14 @@ body {
 	grid-area: textarea;
 }
 
+#instruction_text{
+	display: flex;
+	flex-direction: column;
+	grid-area: textarea;
+	width: 50%;
+	margin-left: 50%;
+}
+
 #themetext{
 	height: 100%;
 	width: 100%;
@@ -2557,6 +2565,7 @@ body {
 
 .context-sp {background-color: var(--context_colors_soft_prompt);}
 .context-genre {background-color: var(--context_colors_genre);}
+.context-instruction {background-color: var(--context_colors_instruction);}
 .context-prompt {background-color: var(--context_colors_prompt);}
 .context-wi {background-color: var(--context_colors_world_info);}
 .context-memory {background-color: var(--context_colors_memory);}
@@ -3576,6 +3585,8 @@ textarea.fullwidth {
 
 .rawtext {
 	white-space: pre-wrap;
+	padding-left: 0px;
+	padding-right: 0px;
 }
 
 .action_mode_input {
@@ -3600,7 +3611,7 @@ textarea.fullwidth {
 	font-style: italic;
 }
 
-.wi_match {
+.worldinfo {
 	font-style: italic;
 }
 
@@ -4029,4 +4040,31 @@ select {
 
 #load-model .popup_load_cancel {
 	grid-area: ok;
+}
+.instruction {
+	border-top: thick double grey;
+	border-bottom: thick double grey;
+}
+
+.instruction[user_show_instruction="false"] {
+	display: none;
+}
+
+.InstructionHeader {
+	background-color: #404040;
+	color: white;
+	pointer-events: none;
+}
+
+.InstructionUser {
+	
+}
+
+.InstructionFooter {
+	background-color: #404040;
+	pointer-events: none;
+}
+
+.last-update, #token-stream-buffer {
+	text-decoration: underline dotted;
 }

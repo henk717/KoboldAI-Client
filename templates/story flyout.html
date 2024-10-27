@@ -29,6 +29,13 @@
 				</script>
 			</div>
 		</div>
+		<!---<div id="instruction_mode">
+			<h4 class="section_header"><label for="instruction_mode">Instruction Mode</label></h4>
+			<div class="help_text">
+				The instruction the AI should act on
+			</div>
+			<textarea rows=2 id="instruction" class="var_sync_model_instruction var_sync_alt_story_instruction_length fullwidth" onchange='sync_to_server(this);' oninput="autoResize(this)" autocomplete="off" placeholder="Instruction the AI will act on"></textarea><br>
+		</div>--->
 		<div id="Auto-Memory" class="var_sync_alt_system_experimental_features">
 			<h4 class="section_header"><label for="auto_memory">Auto-Memory (non-functional)</label></h4>
 			<div class="help_text">
@@ -126,6 +133,7 @@
 		<div class="token_breakdown" onclick='socket.emit("update_tokens", document.getElementById("input_text").value);openPopup("context-viewer");'>
 			<div id="soft_prompt_tokens" style="width:0%; background-color: var(--context_colors_soft_prompt);"></div>
 			<div id="genre_tokens" style="width:40%; background-color: var(--context_colors_genre);"></div>
+			<div id="instruction_tokens" style="width:40%; background-color: var(--context_colors_instruction);"></div>
 			<div id="memory_tokens" style="width:40%; background-color: var(--context_colors_memory);"></div>
 			<div id="authors_notes_tokens" style="width:10%; background-color: var(--context_colors_authors_notes);"></div>
 			<div id="world_info_tokens" style="width:20%; background-color: var(--context_colors_world_info);"></div>

@@ -74,7 +74,7 @@
 		<div class="title">
 			<div class="popuptitletext">Locked</div>
 		</div>
-		<div id="popup_list_area" class="popup_list_area">
+		<div id="popup_list_area" class="popup_list_area" style="height: 120px;">
 			This story is in private mode. Please enter the password to unlock it.<br/>
 			<input type="password" id="privacy_password"/>
 		</div>
@@ -194,6 +194,7 @@
 					<div>
 						<span class="noselect context-block-example context-sp">Soft Prompt</span>
 						<span class="noselect context-block-example context-genre">Genre</span>
+						<span class="noselect context-block-example context-instruction">Instruction</span>
 						<span class="noselect context-block-example context-memory">Memory</span>
 						<span class="noselect context-block-example context-wi">World Info</span>
 						<span class="noselect context-block-example context-an">Author's Note</span>
@@ -307,7 +308,7 @@
 
 	<!-- Screenshot Wizard -->
 	<div id="screenshot-wizard" class="popup-window">
-		<script src="/static/html2canvas.min.js"></script>
+		<!--<script src="/static/html2canvas.min.js" defer></script>-->
 		<div class="popup-header">
 			<h1>Screenshot</h1>
 		</div>

@@ -296,10 +296,15 @@ function storySubmit(genMode=null) {
 	const textInput = document.getElementById("input_text");
 	const themeInput = document.getElementById("themetext");
 	disruptStoryState();
+	let instruction = "";
+	if (!(document.getElementById('instruction_text').classList.contains('hidden'))) {
+		instruction = document.getElementById('instruction_text').value;
+	}
 	socket.emit('submit', {
 		data: textInput.value,
 		theme: themeInput.value,
 		gen_mode: genMode,
+		'instruction': instruction
 	});
 
 	textInput.value = '';
@@ -375,7 +380,8 @@ function reset_story() {
 	if (storyPrompt) {
 		storyPrompt.setAttribute("world_info_uids", "");
 	}
-	document.getElementById('themerow').classList.remove("hidden");
+	//document.getElementById('themerow').classList.remove("hidden");
+	document.getElementById('prompt_menu_random').classList.remove("hidden");
 	document.getElementById('input_text').placeholder = "Enter Prompt Here (shift+enter for new line)";
 	text = "";
 	for (i=0;i<70;i++) {
@@ -689,10 +695,20 @@ function parseChatMessages(text) {
 	return messages;
 }
 
+function reparse_actions() {
+	for (const [key, value] of Object.entries(actions_data)) {
+		if (key != -1) {
+			do_story_text_updates({"id": key, "action": value});
+		}
+	}
+}
+
 function do_story_text_updates(action) {
 	story_area = document.getElementById('Selected Text');
 	current_chunk_number = action.id;
-	let item = null;
+	let instruction_start = document.getElementById('instruction_start');
+	let instruction_end = document.getElementById('instruction_end');
+	let chunk_element = null;
 
 	if (chat.useV2) {
 		//console.log(`[story_text_update] ${action.id}`)
@@ -715,18 +731,18 @@ function do_story_text_updates(action) {
 		}
 	} else {
 		if (document.getElementById('Selected Text Chunk '+action.id)) {
-			item = document.getElementById('Selected Text Chunk '+action.id);
+			chunk_element = document.getElementById('Selected Text Chunk '+action.id);
 			//clear out the item first
-			while (item.firstChild) { 
-				item.removeChild(item.firstChild);
+			while (chunk_element.firstChild) { 
+				chunk_element.removeChild(chunk_element.firstChild);
 			}
 		} else {
-			item = document.createElement("span");
-			item.id = 'Selected Text Chunk '+action.id;
-			item.classList.add("rawtext");
-			item.setAttribute("chunk", action.id);
-			item.setAttribute("tabindex", parseInt(action.id)+1);
-			item.addEventListener("focus", (event) => {
+			chunk_element = document.createElement("span");
+			chunk_element.id = 'Selected Text Chunk '+action.id;
+			chunk_element.classList.add("rawtext");
+			chunk_element.setAttribute("chunk", action.id);
+			chunk_element.setAttribute("tabindex", parseInt(action.id)+1);
+			chunk_element.addEventListener("focus", (event) => {
 				set_image_action(action.id);
 			});
 			
@@ -740,39 +756,118 @@ function do_story_text_updates(action) {
 				eval_element += 1;
 			}
 			if (closest_element.nextElementSibling) {
-				story_area.insertBefore(item, closest_element.nextElementSibling);
+				story_area.insertBefore(chunk_element, closest_element.nextElementSibling);
 			} else {
-				story_area.append(item);
+				story_area.append(chunk_element);
 			}
 		}
 
-		item.classList.toggle(
+		chunk_element.classList.toggle(
 			"action_mode_input",
 			action.action['Selected Text'].replaceAll("\n", "")[0] === ">"
 		);
 
-		if ('wi_highlighted_text' in action.action) {
-			for (chunk of action.action['wi_highlighted_text']) {
-				chunk_element = document.createElement("span");
-				chunk_element.innerText = chunk['text'];
-				if (chunk['WI matches'] != null) {
-					chunk_element.classList.add("wi_match");
-					chunk_element.setAttribute("tooltip", chunk['WI Text']);
-					chunk_element.setAttribute("wi-uid", chunk['WI matches']);
-				}
-				item.append(chunk_element);
+	
+		
+		//First, let's split our action text into regular text, instruction header, instruction text, and instruction footer
+		
+		action_text = do_wi_highlights(action.action['Selected Text']);
+			
+		instruction_area = document.createElement('div');
+		instruction_area.classList.add("instruction");
+		instruction_area.classList.add('var_sync_alt_user_show_instruction');
+		instruction_area.setAttribute('user_show_instruction', document.getElementById('user_show_instruction').checked);
+		for (action_text_item of action_text) {
+			text_area = document.createElement('span');
+			text_area.classList.add(action_text_item['type']);
+			text_area.classList.add('rawtext');
+			text_area.innerText = action_text_item['text'];
+			
+			//If we're a world info entry, let's add the WI metadata
+			if (action_text_item['type'] == 'worldinfo') {
+				text_area.setAttribute('tooltip', action_text_item['world info text']);
 			}
-		} else {
-			chunk_element = document.createElement("span");
-			chunk_element.innerText = action.action['Selected Text'];
-			item.append(chunk_element);
+			
+			//add group code if we've got instructions
+			if (action_text_item['type'] == 'InstructionHeader') {
+				text_area.innerText = String.fromCharCode(29) + instruction_start.value + String.fromCharCode(29);
+				text_area.contentEditable = false;
+			} else if (action_text_item['type'] == 'InstructionFooter') {
+				text_area.innerText = String.fromCharCode(29) + instruction_end.value;
+				text_area.contentEditable = false;
+			}
+			
+			//Grr Chrome is now showing ascii 29 as a square. I swore it didn't before....
+			hide_ascii_29(text_area);
+			
+			//Add text to game screen
+			if (['InstructionFooter', 'InstructionHeader', 'InstructionUser'].includes(action_text_item['type'])) {
+				instruction_area.append(text_area);
+			} else {
+				chunk_element.append(text_area);
+			}
+			
+			if (action_text_item['type'] == 'InstructionFooter') {
+				chunk_element.append(instruction_area);
+			}
+			
 		}
-		item.original_text = action.action['Selected Text'];
-		item.classList.remove("pulse")
-		item.classList.remove("single_pulse");
-		item.classList.add("single_pulse");
+		
+		chunk_element.classList.remove("pulse")
+		chunk_element.classList.remove("single_pulse");
+		chunk_element.classList.add("single_pulse");
+		
 	}
+	
+	Array.from(document.getElementsByClassName('last-update')).forEach(
+	  (el) => el.classList.remove('last-update')
+	);
+	chunk_element.classList.add("last-update");
 }
+
+function hide_ascii_29(paragraph) {
+	const regex = new RegExp(String.fromCharCode(29), "gi");
+	const text = paragraph.innerHTML;
+	const newText = text.replace(regex, (match) => {
+		return '<span class="ascii_29 hidden">' + match + '</span>';
+	});
+	paragraph.innerHTML = newText;
+}
+
+function do_wi_highlights(action_data) {
+	var action_text = action_data.split(String.fromCharCode(29));
+	for (i=0; i<action_text.length; i++) {
+		action_text[i] = {'text': action_text[i], 'type': {0: 'gametext', 1: 'InstructionHeader', 2: 'InstructionUser', 3: 'InstructionFooter'}[i]};
+	}
+	//let's find any world info text in the action text
+	//Loop through each WI, through each chunk of the action text, through each key looking for matches
+	for (const [_, wi] of Object.entries(world_info_data)) {
+		for (i=0; i<action_text.length;i++) {
+			for (key of wi['key']) {
+				if (action_text[i]['text'].includes(key) && (action_text[i]['type'] == 'gametext')) {
+					for (secondkey of (wi['keysecondary'].length == 0)? [null] : wi['keysecondary']) {
+						if ((wi['selective'] && (action_text[i]['text'].includes(secondkey))) || (!wi['selective'])) {
+							temp = action_text[i]['text'].split(new RegExp('\\b' + key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b'));
+							for (j=0; j<temp.length; j++) {
+								temp[j] = {'text': temp[j], 'type': 'game_text'};
+								if (j+1 < temp.length) {
+									temp.splice(j+1, 0, {'text': key, 'type': 'worldinfo', 'world info text': wi['content']});
+									j++;
+								}
+							}
+							action_text.splice(i,1);
+							action_text.splice.apply(action_text, [i, 0].concat(temp));
+							break;
+						}
+					}
+					break;
+				}
+			}
+		}
+	}
+	return action_text;
+}
+
 
 function do_prompt(data) {
 	if (!document.getElementById("story_prompt")) {
@@ -809,7 +904,6 @@ function do_prompt(data) {
 				}
 				item.append(chunk_element);
 			}
-			item.original_text = full_text;
 			item.classList.remove("pulse");
 			assign_world_info_to_action(-1, null);
 		}
@@ -823,7 +917,8 @@ function do_prompt(data) {
 	//if we have a prompt we need to disable the theme area, or enable it if we don't
 	if (data.value[0].text != "") {
 		document.getElementById('input_text').placeholder = "Enter text here (shift+enter for new line)";
-		document.getElementById('themerow').classList.add("hidden");
+		//document.getElementById('themerow').classList.add("hidden");
+		document.getElementById('prompt_menu_random').classList.add("hidden");
 		document.getElementById('themetext').value = "";
 		document.getElementById("welcome_container").classList.add("hidden");
 		//enable editing
@@ -831,7 +926,8 @@ function do_prompt(data) {
 	} else {
 		document.getElementById('input_text').placeholder = "Enter Prompt Here (shift+enter for new line)";
 		document.getElementById('input_text').disabled = false;
-		document.getElementById('themerow').classList.remove("hidden");
+		//document.getElementById('themerow').classList.remove("hidden");
+		document.getElementById('prompt_menu_random').classList.remove("hidden");
 		addInitChatMessage();
 	}
 	
@@ -1137,6 +1233,14 @@ function var_changed(data) {
 		
 		
 		
+	}
+	
+	//If we've changed the instruction header/footer, re-work game text
+	if (data.classname == 'model' && ((data.name == 'instruction_start') || (data.name == 'instruction_end'))) {
+		reparse_actions();
+	}
+	if (data.classname == 'user' && data.name == 'show_instruction') {
+		reparse_actions();
 	}
 	
 	//if we changed the gen amount, make sure our option area is set/not set
@@ -3398,6 +3502,7 @@ function gametextwatcher(records) {
 				if ((chunk instanceof HTMLElement) && (chunk.hasAttribute("chunk"))) {
 					if (!document.getElementById("Selected Text Chunk " + chunk.getAttribute("chunk"))) {
 						//Node was actually deleted. 
+						console.log("deleted node");
 						if (!dirty_chunks.includes(chunk.getAttribute("chunk"))) {
 							dirty_chunks.push(chunk.getAttribute("chunk"));
 							//Stupid firefox sometimes looses focus as you type after deleting stuff. Fix that here
@@ -3415,6 +3520,7 @@ function gametextwatcher(records) {
 		//get the actual chunk rather than the sub-node
 		//console.log(record);
 		var chunk = record.target;
+		var original_text;
 		var found_chunk = false;
 		while (chunk != game_text) {
 			if (chunk) {
@@ -3427,7 +3533,31 @@ function gametextwatcher(records) {
 				break;
 			}
 		}
-		if ((found_chunk) && (chunk.original_text != chunk.innerText)) {;
+		if ((chunk) && (chunk.getAttribute("chunk") != null)) {
+			//Instruction mode text makes a mess of our text detector. We only want to detect changes in the pre-instruction and actual instruction text, 
+			original_text = actions_data[chunk.getAttribute("chunk")]["Selected Text"].split(String.fromCharCode(29));
+			if (original_text.length > 2) {
+				original_text = original_text[0] + String.fromCharCode(29) + original_text[2];
+			} else {
+				original_text = original_text[0]
+			}
+		}
+		
+		//Because chrome displays character 29 differently AND doesn't return hidden span text we have to do some extra work to find those characters
+		//let temp = chunk.cloneNode(true)
+		for (item of chunk.getElementsByClassName("ascii_29")) {
+			item.classList.remove("hidden");
+		}
+		chunk_text = chunk.innerText.split(String.fromCharCode(29));
+		for (item of chunk.getElementsByClassName("ascii_29")) {
+			item.classList.add("hidden");
+		}
+		if (chunk_text.length > 2) {
+			chunk_text = chunk_text[0].slice(0, -1) + String.fromCharCode(29) + chunk_text[2];
+		} else {
+			chunk_text = chunk_text[0]
+		}
+		if ((found_chunk) && (original_text != chunk_text)) {
 			if (!dirty_chunks.includes(chunk.getAttribute("chunk"))) {
 				dirty_chunks.push(chunk.getAttribute("chunk"));
 			}
@@ -3516,7 +3646,13 @@ function savegametextchanges() {
 			chunk = document.getElementById("Selected Text Chunk " + chunk_id);
 		}
 		if (chunk) {
+			for (item of chunk.getElementsByClassName("ascii_29")) {
+				item.classList.remove("hidden");
+			}
 			update_game_text(parseInt(chunk.getAttribute("chunk")), chunk.innerText);
+			for (item of chunk.getElementsByClassName("ascii_29")) {
+				item.classList.add("hidden");
+			}
 		} else {
 			update_game_text(parseInt(chunk_id), "");
 		}
@@ -3524,13 +3660,20 @@ function savegametextchanges() {
 	dirty_chunks = [];
 }
 
-
 function update_game_text(id, new_text) {
 	let temp = null;
+	//Thanks to the new instruction mode and not actually saving the instruction text, we need to do some special processing here to not loose those tags
+	
+	//find the last occurance of the end tag
+	if (new_text.includes(String.fromCharCode(29))) {
+		temp = new_text.split(String.fromCharCode(29));
+		new_text = temp[0].slice(0,-1) + String.fromCharCode(29) + "{{[INPUT]}}" + String.fromCharCode(29) + temp[2] + String.fromCharCode(29) + "{{[OUTPUT]}}";
+	}
+	
 	if (id == -1) {
 		if (document.getElementById("story_prompt")) {
 			temp = document.getElementById("story_prompt");
-			temp.original_text = new_text;
+			actions_data[id]['Selected Text'] = new_text;
 			temp.classList.add("pulse");
 			sync_to_server(temp);
 		} else {
@@ -3539,7 +3682,7 @@ function update_game_text(id, new_text) {
 	} else {
 		if (document.getElementById("Selected Text Chunk " + id)) {
 			temp = document.getElementById("Selected Text Chunk " + id);
-			temp.original_text = new_text;
+			actions_data[id]['Selected Text'] = new_text;
 			temp.classList.add("pulse");
 			socket.emit("Set Selected Text", {"id": id, "text": new_text});
 		} else {
@@ -3633,6 +3776,55 @@ function save_preset() {
 }
 
 //--------------------------------------------General UI Functions------------------------------------
+
+const instruction_expand_size = 90; //size the instruction area should resize to as a percent (less than 100)
+function resize_instruction(input) {
+	input = this;
+	if (input.id == 'input_text') {
+		document.getElementById('input_text').style.width = instruction_expand_size.toString() + '%';
+		document.getElementById('instruction_text').style.width = (100-instruction_expand_size).toString() + '%';
+		document.getElementById('instruction_text').style.marginLeft = instruction_expand_size.toString() + '%';
+	} else {
+		document.getElementById('input_text').style.width = (100-instruction_expand_size).toString() + '%';
+		document.getElementById('instruction_text').style.width = instruction_expand_size.toString() + '%';
+		document.getElementById('instruction_text').style.marginLeft = (100-instruction_expand_size).toString() + '%';
+	}
+}
+
+function set_input_type(input) {
+	for (item of document.getElementsByClassName("prompt_menu")) {
+		if (input != item) {
+			item.classList.remove("selected");
+			if (document.getElementById(item.getAttribute("textarea_name"))) {
+				document.getElementById(item.getAttribute("textarea_name")).classList.add("hidden");
+			}
+		} else {
+			item.classList.add("selected");
+			if (document.getElementById(item.getAttribute("textarea_name"))) {
+				document.getElementById(item.getAttribute("textarea_name")).classList.remove("hidden");
+			}
+		}
+	}
+	
+	if (input.getAttribute("textarea_name") == 'instruction+prompt_text') {
+		document.getElementById("input_text").classList.remove("hidden");
+		document.getElementById("instruction_text").classList.remove("hidden");
+	
+		//We want to enable the normal submit with additional JS for on click so it expands the area
+		document.getElementById('input_text').classList.remove("hidden")
+		document.getElementById('input_text').style.width = "50%";
+		document.getElementById('instruction_text').style.width = "50%";
+		document.getElementById('instruction_text').style.marginLeft = '50%';
+		document.getElementById('input_text').addEventListener('click', resize_instruction);
+	} else {
+		document.getElementById('input_text').removeEventListener("click", resize_instruction);
+		document.getElementById('input_text').style.width = "100%";
+		document.getElementById('instruction_text').style.width = "100%";
+		document.getElementById('instruction_text').style.marginLeft = '0%';
+	}
+	
+}
+
 function put_cursor_at_element(element) {
 	var range = document.createRange();
 	var sel = window.getSelection();
@@ -3865,7 +4057,6 @@ function tts_playing() {
 }
 
 function set_image_action(action_id) {
-	console.log(action_id);
 	socket.emit("get_story_image", {action_id: action_id}, change_image);
 }
 
@@ -3957,7 +4148,8 @@ function calc_token_usage(
 	prompt_length,
 	game_text_length,
 	world_info_length,
-	submit_length
+	submit_length,
+	instruction_length
 ) {
 	let total_tokens = parseInt(document.getElementById('model_max_length_cur').value);
 	let unused_token_count = total_tokens - memory_length - authors_note_length - world_info_length - prompt_length - game_text_length - submit_length;
@@ -3965,6 +4157,7 @@ function calc_token_usage(
 	const data = [
 		{id: "soft_prompt_tokens", tokenCount: soft_prompt_length, label: "Soft Prompt"},
 		{id: "genre_tokens", tokenCount: genre_length, label: "Genre"},
+		{id: "instruction_tokens", tokenCount: instruction_length, label: "Instruction"},
 		{id: "memory_tokens", tokenCount: memory_length, label: "Memory"},
 		{id: "authors_notes_tokens", tokenCount: authors_note_length, label: "Author's Note"},
 		{id: "world_info_tokens", tokenCount: world_info_length, label: "World Info"},
@@ -4023,7 +4216,6 @@ function Change_Theme(theme) {
 			}
 		}
 		recolorTokens();
-		create_theming_elements();
 	}
 }
 
@@ -4402,6 +4594,7 @@ function update_context(data) {
 	let world_info_length = 0;
 	let soft_prompt_length = 0;
 	let submit_length = 0;
+	let instruction_length = 0;
 	
 	//clear out within_max_length class
 	for (action of document.getElementsByClassName("within_max_length")) {
@@ -4421,7 +4614,8 @@ function update_context(data) {
 			memory: "memory",
 			authors_note: "an",
 			action: "action",
-			submit: 'submit'
+			submit: 'submit',
+			instruction: 'instruction'
 		}[entry.type]);
 
 		let el = $e(
@@ -4450,6 +4644,9 @@ function update_context(data) {
 		switch (entry.type) {
 			case 'soft_prompt':
 				soft_prompt_length += entry.tokens.length;
+				break;
+			case 'instruction':
+				instruction_length += entry.tokens.length;
 				break;
 			case 'prompt':
 				const promptEl = document.getElementById('story_prompt');
@@ -4497,7 +4694,8 @@ function update_context(data) {
 		prompt_length,
 		game_text_length,
 		world_info_length,
-		submit_length
+		submit_length,
+		instruction_length
 	);
 
 
@@ -4815,7 +5013,6 @@ function drop(e) {
 		socket.emit("wi_set_folder", {'dragged_id': dragged_id, 'folder': drop_id});
 	} else {
 		//insert the draggable element before the drop element
-		console.log(element);
 		element.parentElement.insertBefore(draggable, element);
 		draggable.classList.add("pulse");
 
@@ -5235,7 +5432,6 @@ async function downloadDebugFile(redact=true) {
 	
 	r = await fetch("/get_log");
 	let aiserver_log = await r.json();
-	console.log(aiserver_log);
 	
 	debug_info['aiserver errors'] = []
 	for (data of aiserver_log.aiserver_log) {
@@ -5349,7 +5545,6 @@ async function downloadDebugFile(redact=true) {
 		}
 	}
 	
-	console.log(debug_info);
 
 	downloadString(JSON.stringify(debug_info, null, 4), "kobold_debug.json");
 }
@@ -5548,7 +5743,7 @@ async function readLoreCard(file) {
 
 async function processDroppedFile(file) {
 	let extension = /.*\.(.*)/.exec(file.name)[1];
-	console.log("file is", file)
+	//console.log("file is", file)
 	let data;
 
 	switch (extension) {
@@ -6639,7 +6834,7 @@ let load_substitutions;
 			if (c.target === target) duplicates.push(c.card);
 		}
 		
-		console.log(duplicates)
+		//console.log(duplicates)
 		return duplicates.length > 1 ? duplicates : [];
 	}
 	
@@ -6673,7 +6868,7 @@ let load_substitutions;
 			
 			for (const duplicateCard of getDuplicateCards(this.value)) {
 				if (duplicateCard === card) continue;
-				console.log("DUPE", duplicateCard)
+				//console.log("DUPE", duplicateCard)
 				substitutions.splice(getSubstitutionIndex(duplicateCard), 1);
 				duplicateCard.remove();
 			}
@@ -6704,7 +6899,7 @@ let load_substitutions;
 		enabledCheckbox.addEventListener("change", function() {
 			let card = this.parentElement.parentElement;
 			let i = getSubstitutionIndex(card);
-			console.log(this.checked)
+			//console.log(this.checked)
 
 			substitutions[i].enabled = this.checked;
 			enabledVisual.setAttribute("title", this.checked ? "Enabled" : "Disabled")
@@ -7251,7 +7446,7 @@ function computeChatGametext(actionId) {
 	}
 
 	let text = lines.join("\n");
-	console.log(actionId, text);
+	//console.log(actionId, text);
 	socket.emit("Set Selected Text", {id: actionId, text: text});
 	chat.lastEdit = actionId;
 }
@@ -7828,15 +8023,36 @@ function screenshotWizardUpdateShownImages() {
 async function downloadScreenshot() {
 	// TODO: Upscale (eg transform with given ratio like 1.42 to make image
 	// bigger via screenshotTarget cloning)
-	const canvas = await html2canvas(screenshotTarget, {
-		width: screenshotTarget.clientWidth,
-		height: screenshotTarget.clientHeight - 1
-	});
+	
+	if (!document.getElementById("html2canvas")) {
+		let scriptEle = document.createElement("script");
 
-	canvas.style.display = "none";
-	document.body.appendChild(canvas);
-	$e("a", null, {download: "screenshot.png", href: canvas.toDataURL("image/png")}).click();
-	canvas.remove();
+		scriptEle.setAttribute("src", "/static/html2canvas.min.js");
+		scriptEle.setAttribute("type", "text/javascript");
+		scriptEle.setAttribute("async", false);
+		scriptEle.id = "html2canvas";
+
+		document.body.appendChild(scriptEle);
+
+		// success event 
+		scriptEle.addEventListener("load", () => {
+			downloadScreenshot();
+		});
+		// error event
+		scriptEle.addEventListener("error", (ev) => {
+			console.log("Error on loading file", ev);
+		});
+	} else {
+		const canvas = await html2canvas(screenshotTarget, {
+			width: screenshotTarget.clientWidth,
+			height: screenshotTarget.clientHeight - 1
+		});
+
+		canvas.style.display = "none";
+		document.body.appendChild(canvas);
+		$e("a", null, {download: "screenshot.png", href: canvas.toDataURL("image/png")}).click();
+		canvas.remove();
+	}
 }
 $el("#sw-download").addEventListener("click", downloadScreenshot);
 

@@ -169,6 +169,8 @@
 	--context_colors_submit: #ffffff00;
 	--context_colors_unused: #ffffff11;
 	--context_colors_soft_prompt: #141414;
+	--context_colors_genre: #454545;
+	--context_colors_instruction: #6D6D6D;
 	
 
     /*Parameters*/
@@ -221,7 +223,7 @@
 
 /* Boxes */
 
-#input_text, #themetext {
+#input_text, #themetext, #instruction_text {
     border-color: #b6b6b6 !important;
 }
 

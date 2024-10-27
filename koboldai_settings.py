@@ -248,6 +248,12 @@ class koboldai_vars(object):
         # TODO: This might be ineffecient, should we cache some of this?
         return [[token, self.tokenizer.decode(token)] for token in encoded]
     
+    def string_found(self, string1, string2):
+        if re.search(r"\b" + re.escape(string1) + r"\b", string2):
+            return True
+        return False
+
+    
     def calc_ai_text(self, submitted_text=None, return_text=False, send_context=True, allowed_wi_entries=None, allowed_wi_folders=None):
         """Compute the context that would be submitted to the AI.
 
@@ -317,6 +323,7 @@ class koboldai_vars(object):
             used_tokens += len(genre_tokens)
 
 
+        
         ######################################### Add memory ########################################################
         max_memory_length = int(token_budget * self.max_memory_fraction)
         memory_text = self.memory
@@ -399,13 +406,13 @@ class koboldai_vars(object):
                         #Check to see if we have the keys/secondary keys in the text so far
                         match = False
                         for key in wi['key']:
-                            if key in wi_search:
+                            if self.string_found(key, wi_search):
                                 match = True
                                 break
                         if wi['selective'] and match:
                             match = False
                             for key in wi['keysecondary']:
-                                if key in wi_search:
+                                if self.string_found(key, wi_search):
                                     match=True
                                     break
                         if match:
@@ -489,13 +496,13 @@ class koboldai_vars(object):
                         #Check to see if we have the keys/secondary keys in the text so far
                         match = False
                         for key in wi['key']:
-                            if key in wi_search:
+                            if self.string_found(key, wi_search):
                                 match = True
                                 break
                         if wi['selective'] and match:
                             match = False
                             for key in wi['keysecondary']:
-                                if key in wi_search:
+                                if self.string_found(key, wi_search):
                                     match=True
                                     break
                         if method == 1:
@@ -716,7 +723,7 @@ class model_settings(settings):
         self.configname = None
         self.online_model = ''
         self.welcome_default = """<style>#welcome_container { display: block; } #welcome_text { display: flex; height: 100%; } .welcome_text { align-self: flex-end; }</style>
-        <div id='welcome-logo-container'><img id='welcome-logo' src='static/Welcome_Logo.png' draggable='False'></div>
+        <div id='welcome-logo-container'><img id='welcome-logo' src='static/Welcome_Logo.webp' draggable='False'></div>
         <div class='welcome_text'>
             <div id="welcome-text-content">Please load a model from the left.<br/>
                 If you encounter any issues, please click the Download debug dump link in the Home tab on the left flyout and attach the downloaded file to your error report on <a href='https://github.com/ebolam/KoboldAI/issues'>Github</a>, <a href='https://www.reddit.com/r/KoboldAI/'>Reddit</a>, or <a href='https://koboldai.org/discord'>Discord</a>.
@@ -762,6 +769,9 @@ class model_settings(settings):
         self.horde_queue_position = 0
         self.horde_queue_size = 0
         self.use_alt_rep_pen = False
+        self.instruction_start = """Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.\n\n### Instruction:\n"""
+        self.instruction_end = """\n### Response:\n"""
+        self.enable_instruction_mode = False
         
         
 
@@ -883,6 +893,8 @@ class story_settings(settings):
         self._socketio = socketio
         self.tokenizer = tokenizer
         self._koboldai_vars = koboldai_vars
+        #worldinfo_v2 needs to be before any action data so it get's sent to the UI first
+        self.worldinfo_v2 = KoboldWorldInfo(socketio, self, koboldai_vars, tokenizer=self.tokenizer)
         self.privacy_mode = False
         self.privacy_password = ""
         self.story_name  = "New Game"   # Title of the story
@@ -907,7 +919,6 @@ class story_settings(settings):
                               # Selected Text: (text the user had selected. None when this is a newly generated action)
                               # Alternative Generated Text: {Text, Pinned, Previous Selection, Edited}
                               # 
-        self.worldinfo_v2 = KoboldWorldInfo(socketio, self, koboldai_vars, tokenizer=self.tokenizer)
         self.worldinfo   = []     # List of World Info key/value objects
         self.worldinfo_i = []     # List of World Info key/value objects sans uninitialized entries
         self.worldinfo_u = {}     # Dictionary of World Info UID - key/value pairs
@@ -974,6 +985,8 @@ class story_settings(settings):
         self.commentary_enabled = False
         
         self.save_paths = SavePaths(os.path.join("stories", self.story_name or "Untitled"))
+        
+        self.instruction = ""
 
         ################### must be at bottom #########################
         self.no_save = False  #Temporary disable save (doesn't save with the file)
@@ -1144,6 +1157,8 @@ class story_settings(settings):
                 ignore = self._koboldai_vars.calc_ai_text()
             elif name == 'memory':
                 ignore = self._koboldai_vars.calc_ai_text()
+            elif name == 'instruction':
+                ignore = self._koboldai_vars.calc_ai_text()
             elif name == "genres":
                 self._koboldai_vars.calc_ai_text()
             elif name == 'prompt':
@@ -1239,6 +1254,7 @@ class user_settings(settings):
         self.horde_worker_name = "My Awesome Instance"
         self.horde_url = "https://aihorde.net"
         self.model_selected = ""
+        self.show_instruction = True
         
     def __setattr__(self, name, value):
         new_variable = name not in self.__dict__
@@ -2057,6 +2073,12 @@ class KoboldStoryRegister(object):
                 # Add submitted_text to the end
                 actions[self.action_count + 1] = submitted_text
         action_text = "".join(txt for _, txt in sorted(actions.items()))
+        
+        ########### Add in the instruction mode header/footer ############
+        action_text = action_text.replace("{{[INPUT]}}", self._koboldai_vars.instruction_start)
+        action_text = action_text.replace("{{[OUTPUT]}}", self._koboldai_vars.instruction_end)
+        action_text = action_text.replace(chr(29), "")
+        
         ###########action_text_split = [sentence, actions used in sentence, token length, included in AI context]################
         action_text_split = [[x, [], 0, False] for x in self.sentence_re.findall(action_text)]
         #The above line can trim out the last sentence if it's incomplete. Let's check for that and add it back in

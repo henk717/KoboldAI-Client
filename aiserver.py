@@ -6194,8 +6194,18 @@ def UI_2_submit(data):
         # Invalid enum lookup!
         gen_mode = GenerationMode.STANDARD
         logger.warning(f"Unknown gen_mode '{gen_mode_name}', using STANDARD! Report this!")
+    
+    new_action_text = data['data']
+    if data['instruction'] != "":
+        new_action_text += chr(29)
+        new_action_text += "{{[INPUT]}}"
+        new_action_text += chr(29)
+        new_action_text += data['instruction']
+        new_action_text += chr(29)
+        new_action_text += "{{[OUTPUT]}}"
+        
 
-    actionsubmit(data['data'], actionmode=koboldai_vars.actionmode, gen_mode=gen_mode)
+    actionsubmit(new_action_text, actionmode=koboldai_vars.actionmode, gen_mode=gen_mode)
 
  #==================================================================#
 # Event triggered when user clicks the submit button

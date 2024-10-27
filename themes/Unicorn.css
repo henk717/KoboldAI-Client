@@ -173,6 +173,8 @@
 	--context_colors_submit: #ffffff00;
 	--context_colors_unused: #ffffff5c;
 	--context_colors_soft_prompt: #222224;
+	--context_colors_genre: #797979;
+	--context_colors_instruction: #9B5783;
 
     /*Parameters*/
 	--scrollbar-size: 6px;
@@ -227,7 +229,7 @@
 
 /* Boxes */
 
-#input_text, #themetext {
+#input_text, #themetext, #instruction_text {
     border-color: #c9c9c9 !important;
 }
 
