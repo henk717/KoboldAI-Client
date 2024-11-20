@@ -4030,3 +4030,28 @@ select {
 #load-model .popup_load_cancel {
 	grid-area: ok;
 }
+
+
+.model_pause_button[model_model_status="unloaded"] {
+	display:none
+}
+
+.model_play_button[model_model_status="loaded"] {
+	display:none
+}
+
+.model_pause_button[model_model="Read Only"] {
+	display:none
+}
+
+.model_play_button[model_model="Read Only"] {
+	display:none
+}
+
+.model_pause_button[model_model=""] {
+	display:none
+}
+
+.model_play_button[model_model=""] {
+	display:none
+}
