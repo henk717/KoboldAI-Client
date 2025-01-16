@@ -1,5 +1,6 @@
 #!/bin/bash
 # KoboldAI Easy Colab Deployment Script by Henk717
+sleep 2
 echo
 echo
 echo
