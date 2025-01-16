@@ -1,5 +1,9 @@
 #!/bin/bash
 # KoboldAI Easy Colab Deployment Script by Henk717
+echo
+echo
+echo
+echo
 echo The legacy KoboldAI is currently not supported on Colab. Please check our new notebook at https://koboldai.org/colabcpp
 exit 1
 
