@@ -575,10 +575,15 @@ class koboldai_vars(object):
     def reset_for_model_load(self):
         self._model_settings.reset_for_model_load()
     
+    def reset_model_unload_timer(self):
+        if self._system_settings.auto_unload_timer > 0:
+            self._system_settings._model_unload_timer = datetime.datetime.now() + datetime.timedelta(minutes=self._system_settings.auto_unload_timer)
+    
     def __setattr__(self, name, value):
         if name[0] == "_" or name == "tokenizer":
             super().__setattr__(name, value)
         if name[0] != "_":
+            self.reset_model_unload_timer()
             #Send it to the corrent _setting class
             if name in self._model_settings.__dict__:
                 setattr(self._model_settings, name, value)
@@ -762,6 +767,7 @@ class model_settings(settings):
         self.horde_queue_position = 0
         self.horde_queue_size = 0
         self.use_alt_rep_pen = False
+        self.model_status = "unloaded"
         
         
 
@@ -1355,6 +1361,8 @@ class system_settings(settings):
         self.git_repository = ""
         self.git_branch = ""
         self.disable_model_load = False
+        self._model_unload_timer = None
+        self.auto_unload_timer = 0
         
         
         @dataclass
